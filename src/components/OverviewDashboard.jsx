@@ -348,30 +348,30 @@ export default function OverviewDashboard({
       >
         
         {/* Left Column: Grade Distribution Chart per Pilar (7 Cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between hover:shadow-gsm-hover transition-all">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div className="lg:col-span-7 bg-white rounded-3xl p-4 sm:p-6 lg:p-7 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between hover:shadow-gsm-hover transition-all">
+          <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-gsm-blue-main text-2xl">bar_chart</span>
-                <h2 className="font-coolvetica font-bold text-lg text-slate-900 tracking-wide">
+                <h2 className="font-coolvetica font-bold text-base sm:text-lg text-slate-900 tracking-wide">
                   Statistik Capaian Rata-Rata per Pilar
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 font-sans-code tracking-wide mt-0.5">
-                Capaian kompetensi 4 pilar mentoring mahasiswa baru ({gradedStudents.length} mahasiswa telah dinilai)
+              <p className="text-[11px] sm:text-xs text-slate-500 font-sans-code tracking-wide mt-0.5">
+                Capaian kompetensi 4 pilar ({gradedStudents.length} mahasiswa dinilai)
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-[10px] font-sans-code bg-slate-50 border border-gsm-lilac px-3 py-1 rounded-full">
               <span className="w-2.5 h-2.5 rounded-full bg-gsm-blue-main"></span>
-              <span className="text-slate-600 font-bold">Rata-Rata Capaian (%)</span>
+              <span className="text-slate-600 font-bold">Rata-Rata (%)</span>
             </div>
           </div>
 
-          {/* Bar Chart Sumbu X: 4 Pilar */}
-          <div className="relative flex-1 min-h-[240px] flex items-end justify-between px-4 pb-10 pt-8 border-b border-slate-100">
+          {/* Bar Chart Sumbu X: 4 Pilar (Fully Responsive) */}
+          <div className="relative flex-1 min-h-[220px] sm:min-h-[240px] flex items-end justify-between px-1 sm:px-4 pb-10 pt-6 sm:pt-8 border-b border-slate-100 w-full overflow-hidden">
             {/* Grid background dashed lines */}
-            <div className="absolute left-12 right-0 top-0 h-full flex flex-col justify-between pb-10 pointer-events-none opacity-40">
+            <div className="absolute left-7 sm:left-10 right-0 top-0 h-full flex flex-col justify-between pb-10 pointer-events-none opacity-40">
               <div className="w-full border-t border-dashed border-slate-300"></div>
               <div className="w-full border-t border-dashed border-slate-300"></div>
               <div className="w-full border-t border-dashed border-slate-300"></div>
@@ -379,7 +379,7 @@ export default function OverviewDashboard({
             </div>
 
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-slate-400 font-sans-code pb-10 pointer-events-none">
+            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[9px] sm:text-[10px] text-slate-400 font-sans-code pb-10 pointer-events-none">
               <span>100%</span>
               <span>75%</span>
               <span>50%</span>
@@ -387,19 +387,19 @@ export default function OverviewDashboard({
             </div>
 
             {/* 4 Pillars Bars (Sumbu X) */}
-            <div className="relative z-10 w-full flex items-end justify-around pl-12 gap-3 sm:gap-6">
+            <div className="relative z-10 w-full flex items-end justify-around pl-7 sm:pl-10 gap-2 sm:gap-4 md:gap-6">
               {pillarStats.map((pillar) => {
                 const heightPct = pillar.sampleCount > 0 ? Math.max(8, pillar.avgPct) : 10;
 
                 return (
-                  <div key={pillar.id} className="flex-1 flex flex-col items-center group max-w-[90px]">
-                    <span className="text-[11px] font-bold font-sans-code text-slate-800 mb-1.5 opacity-90 group-hover:scale-110 transition-all">
+                  <div key={pillar.id} className="flex-1 flex flex-col items-center group max-w-[58px] sm:max-w-[75px] md:max-w-[90px] min-w-0">
+                    <span className="text-[10px] sm:text-[11px] font-bold font-sans-code text-slate-800 mb-1.5 opacity-90 group-hover:scale-110 transition-all truncate">
                       {pillar.sampleCount > 0 ? `${pillar.avgScore} pt` : '0 pt'}
                     </span>
 
-                    <div className="w-full bg-slate-100 rounded-t-2xl h-[160px] flex items-end p-1 shadow-inner relative overflow-hidden border border-slate-200">
+                    <div className="w-full bg-slate-100 rounded-t-xl sm:rounded-t-2xl h-[130px] sm:h-[160px] flex items-end p-0.5 sm:p-1 shadow-inner relative overflow-hidden border border-slate-200">
                       <div 
-                        className="w-full rounded-t-xl transition-all duration-700 relative group-hover:brightness-110"
+                        className="w-full rounded-t-lg sm:rounded-t-xl transition-all duration-700 relative group-hover:brightness-110"
                         style={{ 
                           height: isChartVisible ? `${heightPct}%` : '0%', 
                           backgroundColor: pillar.color,
@@ -410,10 +410,10 @@ export default function OverviewDashboard({
                       </div>
                     </div>
 
-                    <span className="text-[10px] sm:text-[11px] text-slate-800 font-sans-code font-bold mt-2.5 text-center truncate w-full block">
+                    <span className="text-[9px] sm:text-[11px] text-slate-800 font-sans-code font-bold mt-2 text-center truncate w-full block">
                       {pillar.code}
                     </span>
-                    <span className="text-[9px] text-slate-400 font-sans-code truncate w-full text-center block">
+                    <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code truncate w-full text-center block">
                       {pillar.shortTitle}
                     </span>
                   </div>
@@ -423,9 +423,9 @@ export default function OverviewDashboard({
           </div>
 
           {/* Sub-Footer */}
-          <div className="pt-4 flex flex-wrap items-center justify-between text-xs font-sans-code text-slate-500">
-            <span>P1: CV (30pt) · P2: LinkedIn (20pt) · P3: Interview (35pt) · P4: Sikap (15pt)</span>
-            <span className="text-gsm-blue-main font-bold">Total: 100 Poin</span>
+          <div className="pt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] sm:text-xs font-sans-code text-slate-500">
+            <span className="leading-snug">P1: CV (30pt) · P2: LinkedIn (20pt) · P3: Interview (35pt) · P4: Sikap (15pt)</span>
+            <span className="text-gsm-blue-main font-bold whitespace-nowrap">Total: 100 Poin</span>
           </div>
         </div>
 

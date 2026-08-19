@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { initialStudents } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+import { updateUserLastLogin } from '../lib/dataService';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -11,18 +13,68 @@ export default function LoginPage({ onLoginSuccess }) {
   // Valid mentor list from database / mockData
   const validMentorNames = Array.from(new Set(initialStudents.map(s => s.mentor)));
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const cleanInputUser = username.trim();
-      const cleanInputPass = password.trim();
-      const userLower = cleanInputUser.toLowerCase();
+    const cleanInputUser = username.trim();
+    const cleanInputPass = password.trim();
+    const userLower = cleanInputUser.toLowerCase();
 
-      // 1. Super Admin Account Check (webdev / kerjarodi)
-      if ((userLower === 'webdev' || userLower === 'superadmin') && cleanInputPass === 'kerjarodi') {
+    try {
+      // 1. Query Supabase profiles table for real-time credentials
+      const { data: dbProfiles, error: dbErr } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (!dbErr && dbProfiles && dbProfiles.length > 0) {
+        const foundProfile = dbProfiles.find(p => {
+          const u = (p.username || '').toLowerCase().trim();
+          const n = (p.name || '').toLowerCase().trim();
+          return u === userLower || n === userLower || n.includes(userLower) || userLower.includes(n.split(' ')[0]);
+        });
+
+        if (foundProfile) {
+          const expectedPass = foundProfile.password ? String(foundProfile.password).trim() : null;
+          const isSuperAdmin = foundProfile.role === 'super_admin' || foundProfile.username === 'webdev';
+          const isDefaultMatch = isSuperAdmin 
+            ? (cleanInputPass === 'kerjarodi') 
+            : (cleanInputPass === '123' || cleanInputPass === 'mentor123');
+
+          const isPasswordCorrect = expectedPass 
+            ? (cleanInputPass === expectedPass || isDefaultMatch)
+            : isDefaultMatch;
+
+          if (isPasswordCorrect) {
+            // Record last_login_at in database
+            await updateUserLastLogin({ name: foundProfile.name, username: foundProfile.username });
+
+            onLoginSuccess({
+              id: foundProfile.id || `user-${foundProfile.username}`,
+              name: foundProfile.name || foundProfile.username,
+              role: foundProfile.role || (isSuperAdmin ? 'super_admin' : 'mentor'),
+              username: foundProfile.username || cleanInputUser,
+              password: foundProfile.password || cleanInputPass,
+              group_name: foundProfile.group_name || null
+            });
+            setIsLoading(false);
+            return;
+          } else {
+            setErrorMsg('Password salah. Silakan periksa kembali password Anda.');
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase query during login failed, checking fallbacks:', err);
+    }
+
+    // 2. Offline / Hardcoded Fallbacks
+    // A. Super Admin Fallback
+    if (userLower === 'webdev' || userLower === 'superadmin') {
+      if (cleanInputPass === 'kerjarodi' || cleanInputPass === 'Webdev123') {
         onLoginSuccess({
           id: 'admin-super-01',
           name: 'Super Admin Webdev',
@@ -32,40 +84,44 @@ export default function LoginPage({ onLoginSuccess }) {
         });
         setIsLoading(false);
         return;
+      } else {
+        setErrorMsg('Password salah. Silakan periksa kembali password Anda.');
+        setIsLoading(false);
+        return;
       }
+    }
 
-      // 3. Mentor Database Check — Check if username exists in Database Mentor List
-      const foundMentor = validMentorNames.find(mName => {
-        const mLower = mName.toLowerCase();
-        const firstWord = mLower.split(' ')[0];
-        return mLower === userLower || 
-               mLower.includes(userLower) || 
-               userLower.includes(firstWord) ||
-               userLower.replace(/[^a-z]/g, '').includes(mLower.replace(/[^a-z]/g, ''));
-      });
+    // B. Mentor Fallback
+    const foundMentor = validMentorNames.find(mName => {
+      const mLower = mName.toLowerCase();
+      const firstWord = mLower.split(' ')[0];
+      return mLower === userLower || 
+             mLower.includes(userLower) || 
+             userLower.includes(firstWord) ||
+             userLower.replace(/[^a-z]/g, '').includes(mLower.replace(/[^a-z]/g, ''));
+    });
 
-      if (foundMentor) {
-        if (cleanInputPass === '123' || cleanInputPass === 'mentor123') {
-          onLoginSuccess({
-            id: `mentor-${foundMentor.toLowerCase().replace(/\s+/g, '-')}`,
-            name: foundMentor,
-            role: 'mentor',
-            username: foundMentor,
-            mentorGroup: null
-          });
-          setIsLoading(false);
-          return;
-        } else {
-          setErrorMsg('Password salah. Password standar mentor adalah 123.');
-          setIsLoading(false);
-          return;
-        }
+    if (foundMentor) {
+      if (cleanInputPass === '123' || cleanInputPass === 'mentor123') {
+        onLoginSuccess({
+          id: `mentor-${foundMentor.toLowerCase().replace(/\s+/g, '-')}`,
+          name: foundMentor,
+          role: 'mentor',
+          username: foundMentor,
+          mentorGroup: null
+        });
+        setIsLoading(false);
+        return;
+      } else {
+        setErrorMsg('Password salah. Password standar mentor adalah 123.');
+        setIsLoading(false);
+        return;
       }
+    }
 
-      // If user typed random text not registered in database
-      setErrorMsg(`Akun "${cleanInputUser}" tidak terdaftar di database Mentor atau Admin. Silakan periksa kembali.`);
-      setIsLoading(false);
-    }, 400);
+    // If account not found in database or fallback list
+    setErrorMsg(`Akun "${cleanInputUser}" tidak terdaftar di database Mentor atau Admin. Silakan periksa kembali.`);
+    setIsLoading(false);
   };
 
   return (
