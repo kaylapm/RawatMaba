@@ -132,15 +132,15 @@ export default function LoginPage({ onLoginSuccess }) {
             {/* Username Input */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider font-sans-code">
-                Username / Nama Mentor
+                Username
               </label>
               <input 
-                type="text"
+                type="text" 
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan nama mentor (contoh: Avemaris)..."
-                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-isi text-slate-900 placeholder-slate-400 outline-none focus:border-[#003CEC] focus:ring-2 focus:ring-[#003CEC]/20 transition-all duration-200 shadow-sm"
+                placeholder="Masukkan username..."
+                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-isi text-slate-900 placeholder-slate-400 outline-none focus:border-gsm-blue-main focus:ring-2 focus:ring-gsm-blue-main/20 transition-all duration-200 shadow-sm"
               />
             </div>
 
@@ -156,7 +156,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password..."
-                  className="w-full px-4 py-3 pr-11 bg-white border border-slate-300 rounded-xl text-xs font-isi text-slate-900 placeholder-slate-400 outline-none focus:border-[#003CEC] focus:ring-2 focus:ring-[#003CEC]/20 transition-all duration-200 shadow-sm"
+                  className="w-full px-4 py-3 pr-11 bg-white border border-slate-300 rounded-xl text-xs font-isi text-slate-900 placeholder-slate-400 outline-none focus:border-gsm-blue-main focus:ring-2 focus:ring-gsm-blue-main/20 transition-all duration-200 shadow-sm"
                 />
                 <button 
                   type="button"
@@ -175,10 +175,9 @@ export default function LoginPage({ onLoginSuccess }) {
             <button 
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 rounded-xl bg-[#003CEC] hover:bg-[#002ec4] text-white font-bold text-xs shadow-lg shadow-[#003CEC]/20 transition-all duration-300 font-reddit flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full py-3.5 rounded-xl bg-gsm-blue-main hover:bg-[#002ec4] text-white font-bold text-xs shadow-lg shadow-gsm-blue-main/20 transition-all duration-300 font-reddit flex items-center justify-center hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
             >
-              <span>{isLoading ? 'Memverifikasi...' : 'Masuk'}</span>
-              <span className="material-symbols-outlined text-base">arrow_forward</span>
+              <span>{isLoading ? 'Loading...' : 'Sign In'}</span>
             </button>
 
           </form>

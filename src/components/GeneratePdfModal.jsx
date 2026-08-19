@@ -167,10 +167,10 @@ export default function GeneratePdfModal({ isOpen, onClose, student, students })
               disabled={isSendingEmail || isGenerating}
               className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-2 font-reddit ${
                 emailStatus === 'sent'
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-[#00B0D8] text-white'
                   : emailStatus === 'error'
-                  ? 'bg-rose-500 text-white'
-                  : 'bg-violet-600 hover:bg-violet-700 text-white'
+                  ? 'bg-[#C86047] text-white'
+                  : 'bg-gsm-blue-main hover:bg-[#002ec4] text-white'
               }`}
             >
               <span className="material-symbols-outlined text-base">
@@ -198,11 +198,11 @@ export default function GeneratePdfModal({ isOpen, onClose, student, students })
 
         {/* Email recipient info bar */}
         {(currentStudent.email || true) && (
-          <div className="bg-violet-50 border-b border-violet-100 px-6 py-2.5 flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-violet-500 text-sm">info</span>
-            <p className="text-xs text-violet-700 font-isi">
-              Email rapot akan dikirim ke: <span className="font-bold font-sans-code">{currentStudent.email || 'kaylaputrimaharani@gmail.com'}</span>
-              {' '}— Subject: <span className="font-semibold">[RAPOT RAWAT MABA 2026] Hasil Evaluasi - {currentStudent.name}</span>
+          <div className="bg-blue-50 border-b border-gsm-lilac px-6 py-2.5 flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-gsm-blue-main text-sm">info</span>
+            <p className="text-xs text-slate-700 font-isi">
+              Email rapot akan dikirim ke: <span className="font-bold font-sans-code text-gsm-blue-main">{currentStudent.email || 'kaylaputrimaharani@gmail.com'}</span>
+              {' '}— Subject: <span className="font-semibold text-slate-900">[RAPOT RAWAT MABA 2026] Hasil Evaluasi - {currentStudent.name}</span>
             </p>
           </div>
         )}
@@ -226,11 +226,11 @@ export default function GeneratePdfModal({ isOpen, onClose, student, students })
         )}
 
         {/* Printable Rapot Preview Container */}
-        <div className="p-6 md:p-8 bg-slate-100 max-h-[75vh] overflow-y-auto">
+        <div className="p-3 sm:p-6 md:p-8 bg-slate-100 max-h-[75vh] overflow-y-auto overflow-x-auto">
           
           <div 
             ref={rapotRef} 
-            className="bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-300 relative text-slate-900 max-w-3xl mx-auto"
+            className="bg-white p-5 sm:p-8 md:p-10 rounded-2xl shadow-xl border border-slate-300 relative text-slate-900 max-w-3xl mx-auto min-w-[320px]"
           >
             {/* GSM Background Watermark Accent */}
             <img 
@@ -351,7 +351,7 @@ export default function GeneratePdfModal({ isOpen, onClose, student, students })
                   <span className="font-coolvetica font-bold text-4xl text-gsm-cream">
                     {currentStudent.finalScore}
                   </span>
-                  <span className="bg-emerald-500 text-slate-950 font-bold text-sm px-3 py-1 rounded-full font-reddit">
+                  <span className="bg-gsm-cream text-slate-950 font-bold text-xs sm:text-sm px-3.5 py-1 rounded-full font-reddit border border-yellow-200">
                     Predikat {currentStudent.predicate}
                   </span>
                 </div>
@@ -359,7 +359,7 @@ export default function GeneratePdfModal({ isOpen, onClose, student, students })
 
               <div className="text-right">
                 <span className="text-[10px] text-slate-300 font-sans-code uppercase block">Status Kelulusan</span>
-                <span className="font-coolvetica font-bold text-sm text-emerald-400 block mt-0.5">
+                <span className="font-coolvetica font-bold text-sm text-[#00B0D8] block mt-0.5">
                   {currentStudent.status}
                 </span>
               </div>

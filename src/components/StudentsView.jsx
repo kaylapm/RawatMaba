@@ -107,15 +107,15 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200">
-                Direktori Mahasiswa
+                2026
               </span>
-              <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen HRD</span>
+              <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen Sistem Informasi</span>
             </div>
             <h1 className="font-coolvetica font-bold text-2xl text-slate-900 mt-1">
               Data Mahasiswa Sistem Informasi & Inovasi Digital
             </h1>
             <p className="text-xs text-slate-500 font-isi mt-0.5">
-              Daftar seluruh mahasiswa baru terdaftar, status pengisian rapot 4 pilar, dan pencetakan dokumen evaluasi.
+              Daftar seluruh mahasiswa baru angkatan 2026 Departemen Sistem Informasi, status pengisian rapot 4 pilar, dan evaluasi mentoring.
             </p>
           </div>
         </div>

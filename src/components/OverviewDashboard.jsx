@@ -272,8 +272,8 @@ export default function OverviewDashboard({
           <div>
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-semibold text-slate-500 font-isi tracking-wide">Jumlah Mahasiswa Maba</span>
-              <span className="bg-cyan-50 text-cyan-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-gsm-cyan/30 font-sans-code tracking-wider">
-                Departemen HRD
+              <span className="bg-cyan-50 text-[#0082A0] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-gsm-cyan/30 font-sans-code tracking-wider">
+                2026
               </span>
             </div>
             <div className="flex items-end gap-3 my-1">
@@ -282,7 +282,7 @@ export default function OverviewDashboard({
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 font-sans-code flex items-center justify-between tracking-wide">
-            <span>{isMentor ? `Anggota Kelompok ${mentorGroupName}` : 'Maba SI & Inovasi Digital'}</span>
+            <span>{isMentor ? `Anggota Kelompok ${mentorGroupName}` : 'Departemen Sistem Informasi'}</span>
             <span className="text-gsm-blue-main font-bold">Terdaftar</span>
           </div>
         </div>
@@ -308,7 +308,7 @@ export default function OverviewDashboard({
           </div>
           <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 font-sans-code flex items-center justify-between tracking-wide">
             <span>Siap Cetak Rapot</span>
-            <button onClick={onOpenInsert} className="text-gsm-blue-main font-bold hover:underline">Input Nilai</button>
+            <span className="text-gsm-blue-main font-bold">Siap Cetak</span>
           </div>
         </div>
 
@@ -333,7 +333,7 @@ export default function OverviewDashboard({
           </div>
           <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 font-sans-code flex items-center justify-between tracking-wide">
             <span>Perlu Penilaian Mentor</span>
-            <button onClick={onOpenInsert} className="text-[#C86047] font-bold hover:underline">Isi Skor</button>
+            <span className="text-[#C86047] font-bold">Pending</span>
           </div>
         </div>
 

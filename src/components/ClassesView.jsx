@@ -125,7 +125,7 @@ export default function ClassesView({ classes = [], students = [], mentorLogins 
                     {cls.id}
                   </span>
                   <span className={`text-[10px] font-sans-code font-bold px-2.5 py-1 rounded-full ${
-                    progressPercent === 100 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                    progressPercent === 100 ? 'bg-[#00B0D8]/15 text-[#0082A0] border border-[#00B0D8]/40' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {progressPercent}% Selesai
                   </span>
@@ -148,7 +148,7 @@ export default function ClassesView({ classes = [], students = [], mentorLogins 
                   </div>
                   <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full transition-all duration-500 ${progressPercent === 100 ? 'bg-emerald-500' : 'bg-gsm-blue-main'}`}
+                      className={`h-full rounded-full transition-all duration-500 ${progressPercent === 100 ? 'bg-[#00B0D8]' : 'bg-gsm-blue-main'}`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -157,7 +157,7 @@ export default function ClassesView({ classes = [], students = [], mentorLogins 
                 {/* Mentor Login Activity */}
                 <div className="flex items-center justify-between text-[10px] font-sans-code text-slate-400 pt-2 border-t border-slate-100">
                   <span>Last Login Mentor:</span>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${lastLogin ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500'}`}>
+                  <span className={`font-bold px-2 py-0.5 rounded-md ${lastLogin ? 'text-[#003CEC] bg-blue-50 border border-gsm-lilac' : 'text-slate-500'}`}>
                     {loginBadge}
                   </span>
                 </div>

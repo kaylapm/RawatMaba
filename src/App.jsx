@@ -14,8 +14,28 @@ import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
 import { fetchAllRealData, saveStudentGradeToSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
 
+const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 Hours Session Stay
+
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
+  // Persistent 24-Hour Session State
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.user && parsed.expiresAt && Date.now() < parsed.expiresAt) {
+          return parsed.user;
+        } else {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read session:', e);
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -124,6 +144,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch (e) {}
     setCurrentUser(null);
     showToast('Sampai jumpa lagi! Terima kasih atas dedikasinya.');
   };
@@ -152,6 +175,16 @@ export default function App() {
     return (
       <LoginPage 
         onLoginSuccess={(user) => {
+          try {
+            const sessionData = {
+              user,
+              loginAt: Date.now(),
+              expiresAt: Date.now() + SESSION_DURATION_MS
+            };
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+          } catch (e) {
+            console.warn('Could not persist session:', e);
+          }
           setCurrentUser(user);
           showToast(`Selamat datang, ${user.name || user.username}!`);
         }} 
@@ -174,7 +207,7 @@ export default function App() {
 
       {/* Toast Notification (GSM Style, Warm & Human) */}
       {toast && (
-        <div className="fixed top-24 right-6 sm:right-8 z-50 bg-white/95 backdrop-blur-xl border border-gsm-lilac shadow-gsm-hover text-slate-900 rounded-2xl px-4 sm:px-5 py-3 flex items-center gap-3 animate-in slide-in-from-top-3 duration-300 font-isi">
+        <div className="fixed top-24 right-4 sm:right-8 z-50 bg-white/95 backdrop-blur-xl border border-gsm-lilac shadow-gsm-hover text-slate-900 rounded-2xl px-4 sm:px-5 py-3 flex items-center gap-3 animate-in slide-in-from-top-3 duration-300 font-isi max-w-[90vw]">
           <div className="w-8 h-8 rounded-xl bg-gsm-blue-gradient text-white flex items-center justify-center shadow-md shadow-gsm-blue-main/20 flex-shrink-0">
             <span className="material-symbols-outlined text-base">verified</span>
           </div>
@@ -185,12 +218,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Header Navigation */}
+      {/* Top Header Navigation with Mobile Support */}
       <Header 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenInsert={() => setIsInsertOpen(true)}

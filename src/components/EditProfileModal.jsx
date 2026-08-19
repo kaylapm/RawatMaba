@@ -161,7 +161,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
               required
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-[#3852f6] focus:ring-2 focus:ring-[#3852f6]/20 transition-all shadow-sm"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-gsm-blue-main focus:ring-2 focus:ring-gsm-blue-main/20 transition-all shadow-sm"
             />
           </div>
 
@@ -174,7 +174,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Kosongkan jika tidak diganti"
-                className="w-full pl-3.5 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-[#3852f6] focus:ring-2 focus:ring-[#3852f6]/20 transition-all shadow-sm"
+                className="w-full pl-3.5 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-gsm-blue-main focus:ring-2 focus:ring-gsm-blue-main/20 transition-all shadow-sm"
               />
               <button
                 type="button"
@@ -197,7 +197,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Ketik ulang password"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-[#3852f6] focus:ring-2 focus:ring-[#3852f6]/20 transition-all shadow-sm"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-gsm-blue-main focus:ring-2 focus:ring-gsm-blue-main/20 transition-all shadow-sm"
               />
             </div>
           )}
@@ -214,7 +214,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2 rounded-xl bg-[#3852f6] hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all disabled:opacity-60"
+              className="px-5 py-2 rounded-xl bg-gsm-blue-main hover:bg-[#002ec4] text-white text-xs font-bold shadow-md shadow-gsm-blue-main/20 transition-all disabled:opacity-60"
             >
               {isLoading ? 'Menyimpan...' : 'Simpan'}
             </button>
