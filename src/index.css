@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Reddit Sans', sans-serif;
+    background-color: #ffffff;
+    color: #0f172a;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  h1, h2, h3, h4, .font-judul {
+    font-family: 'Space Grotesk', 'Coolvetica', sans-serif;
+    letter-spacing: 0.015em;
+    line-height: 1.3;
+  }
+
+  .font-serif-judul {
+    font-family: 'Merriweather', serif;
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+  }
+  
+  .font-isi {
+    font-family: 'Reddit Sans', sans-serif;
+    letter-spacing: 0.005em;
+  }
+
+  .font-code {
+    font-family: 'Google Sans Code', 'Fira Code', monospace;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Exact GSM Blue Background Gradient (#003CEC 0% to #00B0D8 62%) */
+.bg-gsm-linear-exact {
+  background: linear-gradient(135deg, #003CEC 0%, #00B0D8 62%);
+}
+
+/* GSM Title Text Gradient #F09789 to #D696E0 with Crisp 1.5px White Outline */
+.title-pilaraksi-gsm {
+  font-family: 'Coolvetica', 'Space Grotesk', sans-serif;
+  background: linear-gradient(180deg, #F09789 0%, #D696E0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.5px #ffffff;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.3));
+}
+
+.title-pilaraksi-gsm-white {
+  font-family: 'Merriweather', serif;
+  color: #ffffff;
+  -webkit-text-stroke: 1.2px #ffffff;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* Smooth Menu & Page View Transition */
+@keyframes viewFadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.996);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-view-transition {
+  animation: viewFadeSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Looping Keyframe Animations for Login Title */
+@keyframes titleBreathingGlow {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.25));
+  }
+  50% {
+    transform: scale(1.025);
+    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+  }
+}
+
+@keyframes subtitleGlow {
+  0%, 100% {
+    opacity: 0.88;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+    filter: drop-shadow(0 0 15px rgba(255, 241, 197, 0.4));
+  }
+}
+
+.animate-title-breath {
+  animation: titleBreathingGlow 4s ease-in-out infinite;
+}
+
+.animate-subtitle-glow {
+  animation: subtitleGlow 4s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #003CEC;
+}
