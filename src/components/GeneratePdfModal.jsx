@@ -86,17 +86,48 @@ export default function GeneratePdfModal({
   // Helper: generate exact 6-page PDF by rendering each page canvas individually (100% exact 6 pages, Zero Cutoffs!)
   const generateMultiPagePdf = async () => {
     const { jsPDF } = await import('jspdf');
-    const html2canvasModule = await import('html2canvas');
-    const html2canvas = html2canvasModule.default || html2canvasModule;
+    const htmlToImage = await import('html-to-image');
 
-    // Small delay to ensure images in the newly mounted DOM are fully ready
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
     const container = pdfExportContainerRef.current;
     if (!container) throw new Error('Container export tidak ditemukan');
     const pageElements = Array.from(container.children);
 
     if (pageElements.length === 0) throw new Error('Halaman rapot tidak ditemukan');
+
+    // html2canvas must capture the final font metrics and decoded image pixels.
+    // A fixed timeout is unreliable on slower devices and is the main cause of
+    // text baselines being cropped or shifted in the downloaded PDF.
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    const exportImages = Array.from(container.querySelectorAll('img'));
+    await Promise.all(exportImages.map(async (image) => {
+      if (!image.complete) {
+        await new Promise((resolve, reject) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', () => reject(new Error(`Gambar gagal dimuat: ${image.alt || image.src}`)), { once: true });
+        });
+      }
+
+      if (!image.naturalWidth) {
+        throw new Error(`Gambar gagal dimuat: ${image.alt || image.src}`);
+      }
+
+      // decode() waits until the browser can paint the image, not only until
+      // the network request has completed.
+      if (image.decode) {
+        try {
+          await image.decode();
+        } catch {
+          // A fully loaded image can reject decode() in some Chromium builds;
+          // naturalWidth above is the reliable fallback in that case.
+        }
+      }
+    }));
+
+    // Let React layout and web-font metrics settle before taking the snapshot.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     // Create a pristine, strict A4 Portrait jsPDF document
     const pdf = new jsPDF({
@@ -112,12 +143,15 @@ export default function GeneratePdfModal({
         pdf.addPage('a4', 'portrait');
       }
 
-      const canvas = await html2canvas(pageEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        backgroundColor: '#ffffff'
+      // html-to-image renders via an SVG <foreignObject>, so the browser's own
+      // layout/paint engine draws the page (unlike html2canvas, which reimplements
+      // layout itself and was found to mis-center small flex badges in the PDF).
+      const canvas = await htmlToImage.toCanvas(pageEl, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: 1123,
+        cacheBust: true,
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -226,7 +260,7 @@ export default function GeneratePdfModal({
     <div
       className={`relative w-full bg-white overflow-hidden ${
         isPrint
-          ? 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
+          ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
           : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
       }`}
       style={{
@@ -267,7 +301,7 @@ export default function GeneratePdfModal({
           <div 
             className="absolute left-0 right-0 z-10 flex items-center justify-center pointer-events-none px-6 sm:px-10"
             style={{ 
-              top: isTwoLines ? '53.0%' : '55.5%', 
+              top: isTwoLines ? (isPrint ? '56.0%' : '53.0%') : '55.5%',
               height: isTwoLines ? '15.0%' : '12.0%' 
             }}
           >
@@ -393,7 +427,7 @@ export default function GeneratePdfModal({
     <div
       className={`relative w-full bg-white overflow-hidden ${
         isPrint
-          ? 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
+          ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
           : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
       }`}
       style={{
@@ -417,7 +451,7 @@ export default function GeneratePdfModal({
     <div
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
-          ? 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
+          ? 'pdf-export-page pdf-score-sheet-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
           : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
       }`}
       style={{
@@ -434,7 +468,7 @@ export default function GeneratePdfModal({
       />
 
       {/* 2. Top Profile Banner: Student Avatar & Info */}
-      <div 
+      <div
         className="absolute z-10 flex items-center gap-3 sm:gap-4 pointer-events-none"
         style={{ top: '22.0%', left: '16.5%', right: '14.5%', height: '11.0%' }}
       >
@@ -458,13 +492,13 @@ export default function GeneratePdfModal({
       </div>
 
       {/* 3. Left Section: Skor 4 Pilar (Premium Glassmorphic GSM Cards) */}
-      <div 
+      <div
         className="absolute z-10 flex flex-col justify-between pointer-events-none"
         style={{ top: '37.0%', left: '16.2%', width: '45.2%', height: '20.2%' }}
       >
         {/* P1 Card */}
         <div className="bg-white/60 backdrop-blur-xl px-3.5 py-2 rounded-2xl border border-white/90 shadow-[0_6px_20px_rgba(0,60,236,0.06)] ring-1 ring-black/[0.02] flex flex-col justify-center transition-all">
-          <div className="flex items-center justify-between">
+          <div className="pdf-score-row flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#003CEC] to-[#0066FF] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-blue-500/30 flex-shrink-0">
                 P1
@@ -487,7 +521,7 @@ export default function GeneratePdfModal({
 
         {/* P2 Card */}
         <div className="bg-white/60 backdrop-blur-xl px-3.5 py-2 rounded-2xl border border-white/90 shadow-[0_6px_20px_rgba(0,176,216,0.06)] ring-1 ring-black/[0.02] flex flex-col justify-center transition-all">
-          <div className="flex items-center justify-between">
+          <div className="pdf-score-row flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#00B0D8] to-[#22D3EE] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-cyan-500/30 flex-shrink-0">
                 P2
@@ -510,7 +544,7 @@ export default function GeneratePdfModal({
 
         {/* P3 Card */}
         <div className="bg-white/60 backdrop-blur-xl px-3.5 py-2 rounded-2xl border border-white/90 shadow-[0_6px_20px_rgba(138,58,185,0.06)] ring-1 ring-black/[0.02] flex flex-col justify-center transition-all">
-          <div className="flex items-center justify-between">
+          <div className="pdf-score-row flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#8A3AB9] to-[#C896E0] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-purple-500/30 flex-shrink-0">
                 P3
@@ -533,7 +567,7 @@ export default function GeneratePdfModal({
 
         {/* P4 Card */}
         <div className="bg-white/60 backdrop-blur-xl px-3.5 py-2 rounded-2xl border border-white/90 shadow-[0_6px_20px_rgba(200,96,71,0.06)] ring-1 ring-black/[0.02] flex flex-col justify-center transition-all">
-          <div className="flex items-center justify-between">
+          <div className="pdf-score-row flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#C86047] to-[#E59B86] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-orange-500/30 flex-shrink-0">
                 P4
@@ -561,7 +595,7 @@ export default function GeneratePdfModal({
         className="absolute z-10 flex items-center justify-center pointer-events-none"
         style={{ top: '39.8%', left: '64.5%', width: '22.0%', height: '5.5%' }}
       >
-        <span className="font-coolvetica font-bold text-3xl sm:text-4xl md:text-[44px] text-[#FEF08A] tracking-tight leading-none drop-shadow-md">
+        <span className="pdf-page-four-final-score font-coolvetica font-bold text-3xl sm:text-4xl md:text-[44px] text-[#FEF08A] tracking-tight leading-none drop-shadow-md">
           {currentStudent.finalScore || 0}
         </span>
       </div>
@@ -607,14 +641,14 @@ export default function GeneratePdfModal({
             <div>
               <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="px-1.5 py-0.2 rounded-md bg-[#003CEC]/15 backdrop-blur-sm border border-[#003CEC]/20 text-[#003CEC] font-bold text-[8.5px] font-sans-code">
+                  <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#003CEC]/15 backdrop-blur-sm border border-[#003CEC]/20 text-[#003CEC] font-bold text-[8.5px] font-sans-code">
                     P1
                   </span>
-                  <span className="font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
                     CV & Portofolio
                   </span>
                 </div>
-                <span className="font-sans-code font-bold text-[9px] sm:text-[10px] text-[#003CEC] ml-1 flex-shrink-0 bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+                <span className="inline-block leading-4 text-center font-sans-code font-bold text-[9px] sm:text-[10px] text-[#003CEC] ml-1 flex-shrink-0 bg-white/70 h-4 px-1.5 rounded-full border border-white/80">
                   {p1Score} / 30 Pts
                 </span>
               </div>
@@ -622,22 +656,22 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Format CV ATS / Creative & Kerapian Layout</span>
+                  <span className="truncate font-medium leading-none">Format CV ATS / Creative & Kerapian Layout</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Kualitas Penulisan, Data Terukur & Action Verbs</span>
+                  <span className="truncate font-medium leading-none">Kualitas Penulisan, Data Terukur & Action Verbs</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Kesesuaian Pengalaman & Relevansi Divisi</span>
+                  <span className="truncate font-medium leading-none">Kesesuaian Pengalaman & Relevansi Divisi</span>
                 </li>
               </ul>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[7.5px] sm:text-[8.5px] text-slate-500 font-sans-code">
               <span>Status Pilar:</span>
-              <span className="font-bold text-[#003CEC] bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+              <span className="font-bold text-[#003CEC] bg-white/70 inline-block h-4 leading-4 text-center px-1.5 rounded-full border border-white/80">
                 {p1Score >= 24 ? 'Sangat Baik' : (p1Score >= 18 ? 'Baik' : 'Perlu Pendampingan')}
               </span>
             </div>
@@ -648,14 +682,14 @@ export default function GeneratePdfModal({
             <div>
               <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="px-1.5 py-0.2 rounded-md bg-[#00B0D8]/15 backdrop-blur-sm border border-[#00B0D8]/20 text-[#0082A0] font-bold text-[8.5px] font-sans-code">
+                  <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#00B0D8]/15 backdrop-blur-sm border border-[#00B0D8]/20 text-[#0082A0] font-bold text-[8.5px] font-sans-code">
                     P2
                   </span>
-                  <span className="font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
                     Optimalisasi LinkedIn
                   </span>
                 </div>
-                <span className="font-sans-code font-bold text-[9px] sm:text-[10px] text-[#0082A0] ml-1 flex-shrink-0 bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+                <span className="inline-block leading-4 text-center font-sans-code font-bold text-[9px] sm:text-[10px] text-[#0082A0] ml-1 flex-shrink-0 bg-white/70 h-4 px-1.5 rounded-full border border-white/80">
                   {p2Score} / 20 Pts
                 </span>
               </div>
@@ -663,22 +697,22 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Foto Profil & Banner Profesional Menarik</span>
+                  <span className="truncate font-medium leading-none">Foto Profil & Banner Profesional Menarik</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Headline Menjual & Ringkasan About Summary</span>
+                  <span className="truncate font-medium leading-none">Headline Menjual & Ringkasan About Summary</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Kelengkapan Experience, Skills & Projects</span>
+                  <span className="truncate font-medium leading-none">Kelengkapan Experience, Skills & Projects</span>
                 </li>
               </ul>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[7.5px] sm:text-[8.5px] text-slate-500 font-sans-code">
               <span>Status Pilar:</span>
-              <span className="font-bold text-[#0082A0] bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+              <span className="font-bold text-[#0082A0] bg-white/70 inline-block h-4 leading-4 text-center px-1.5 rounded-full border border-white/80">
                 {p2Score >= 16 ? 'Sangat Baik' : (p2Score >= 12 ? 'Baik' : 'Perlu Pendampingan')}
               </span>
             </div>
@@ -689,14 +723,14 @@ export default function GeneratePdfModal({
             <div>
               <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="px-1.5 py-0.2 rounded-md bg-[#C896E0]/25 backdrop-blur-sm border border-[#C896E0]/30 text-[#8A3AB9] font-bold text-[8.5px] font-sans-code">
+                  <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#C896E0]/25 backdrop-blur-sm border border-[#C896E0]/30 text-[#8A3AB9] font-bold text-[8.5px] font-sans-code">
                     P3
                   </span>
-                  <span className="font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
                     Simulasi Interview
                   </span>
                 </div>
-                <span className="font-sans-code font-bold text-[9px] sm:text-[10px] text-[#8A3AB9] ml-1 flex-shrink-0 bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+                <span className="inline-block leading-4 text-center font-sans-code font-bold text-[9px] sm:text-[10px] text-[#8A3AB9] ml-1 flex-shrink-0 bg-white/70 h-4 px-1.5 rounded-full border border-white/80">
                   {p3Score} / 35 Pts
                 </span>
               </div>
@@ -704,22 +738,22 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Artikulasi Jelas, Sikap Tubuh & Eye Contact</span>
+                  <span className="truncate font-medium leading-none">Artikulasi Jelas, Sikap Tubuh & Eye Contact</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Struktur Jawaban STAR & Relevansi Konteks</span>
+                  <span className="truncate font-medium leading-none">Struktur Jawaban STAR & Relevansi Konteks</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Ketepatan Menjawab Pertanyaan Sulit</span>
+                  <span className="truncate font-medium leading-none">Ketepatan Menjawab Pertanyaan Sulit</span>
                 </li>
               </ul>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[7.5px] sm:text-[8.5px] text-slate-500 font-sans-code">
               <span>Status Pilar:</span>
-              <span className="font-bold text-[#8A3AB9] bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+              <span className="font-bold text-[#8A3AB9] bg-white/70 inline-block h-4 leading-4 text-center px-1.5 rounded-full border border-white/80">
                 {p3Score >= 28 ? 'Sangat Baik' : (p3Score >= 21 ? 'Baik' : 'Perlu Pendampingan')}
               </span>
             </div>
@@ -730,14 +764,14 @@ export default function GeneratePdfModal({
             <div>
               <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="px-1.5 py-0.2 rounded-md bg-[#E59B86]/25 backdrop-blur-sm border border-[#E59B86]/30 text-[#C86047] font-bold text-[8.5px] font-sans-code">
+                  <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#E59B86]/25 backdrop-blur-sm border border-[#E59B86]/30 text-[#C86047] font-bold text-[8.5px] font-sans-code">
                     P4
                   </span>
-                  <span className="font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
                     Sikap & Partisipasi
                   </span>
                 </div>
-                <span className="font-sans-code font-bold text-[9px] sm:text-[10px] text-[#C86047] ml-1 flex-shrink-0 bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+                <span className="inline-block leading-4 text-center font-sans-code font-bold text-[9px] sm:text-[10px] text-[#C86047] ml-1 flex-shrink-0 bg-white/70 h-4 px-1.5 rounded-full border border-white/80">
                   {p4Score} / 15 Pts
                 </span>
               </div>
@@ -745,22 +779,22 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Ketepatan Waktu Presensi & Kehadiran Sesi</span>
+                  <span className="truncate font-medium leading-none">Ketepatan Waktu Presensi & Kehadiran Sesi</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Keaktifan Berdiskusi & Antusiasme Mentoring</span>
+                  <span className="truncate font-medium leading-none">Keaktifan Berdiskusi & Antusiasme Mentoring</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium">Etika, Sikap Menghargai & Respon Feedback</span>
+                  <span className="truncate font-medium leading-none">Etika, Sikap Menghargai & Respon Feedback</span>
                 </li>
               </ul>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[7.5px] sm:text-[8.5px] text-slate-500 font-sans-code">
               <span>Status Pilar:</span>
-              <span className="font-bold text-[#C86047] bg-white/70 px-1.5 py-0.2 rounded-full border border-white/80">
+              <span className="font-bold text-[#C86047] bg-white/70 inline-block h-4 leading-4 text-center px-1.5 rounded-full border border-white/80">
                 {p4Score >= 12 ? 'Sangat Baik' : (p4Score >= 9 ? 'Baik' : 'Perlu Pendampingan')}
               </span>
             </div>
@@ -779,7 +813,7 @@ export default function GeneratePdfModal({
     <div
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
-          ? 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
+          ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
           : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
       }`}
       style={{
@@ -840,7 +874,7 @@ export default function GeneratePdfModal({
     <div
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
-          ? 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
+          ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
           : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
       }`}
       style={{
@@ -1148,12 +1182,12 @@ export default function GeneratePdfModal({
           style={{ 
             position: 'fixed', 
             top: 0, 
-            left: 0, 
+            left: '-10000px',
             width: '794px', 
-            height: '1123px',
-            overflow: 'hidden',
+            height: 'auto',
+            overflow: 'visible',
             zIndex: -99999, 
-            opacity: 0, 
+            opacity: 1,
             pointerEvents: 'none' 
           }} 
           aria-hidden="true"
