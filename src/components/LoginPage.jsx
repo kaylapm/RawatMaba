@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { initialStudents } from '../data/mockData';
+import { initialClasses } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { updateUserLastLogin } from '../lib/dataService';
 
@@ -10,8 +10,8 @@ export default function LoginPage({ onLoginSuccess }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Valid mentor list from database / mockData
-  const validMentorNames = Array.from(new Set(initialStudents.map(s => s.mentor)));
+  // Valid mentor list from initialClasses
+  const validMentorNames = Array.from(new Set(initialClasses.map(c => c.mentor).filter(Boolean)));
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -23,10 +23,12 @@ export default function LoginPage({ onLoginSuccess }) {
     const userLower = cleanInputUser.toLowerCase();
 
     try {
-      // 1. Query Supabase profiles table for real-time credentials
+      // 1. Query Supabase specifically for the entered user to prevent data leakage in DevTools
       const { data: dbProfiles, error: dbErr } = await supabase
         .from('profiles')
-        .select('*');
+        .select('id, name, role, username, password, group_name')
+        .or(`username.ilike.${cleanInputUser},name.ilike.%${cleanInputUser}%`)
+        .limit(5);
 
       if (!dbErr && dbProfiles && dbProfiles.length > 0) {
         const foundProfile = dbProfiles.find(p => {
@@ -50,12 +52,12 @@ export default function LoginPage({ onLoginSuccess }) {
             // Record last_login_at in database
             await updateUserLastLogin({ name: foundProfile.name, username: foundProfile.username });
 
+            // Do NOT store plain password in client state/storage
             onLoginSuccess({
               id: foundProfile.id || `user-${foundProfile.username}`,
               name: foundProfile.name || foundProfile.username,
               role: foundProfile.role || (isSuperAdmin ? 'super_admin' : 'mentor'),
               username: foundProfile.username || cleanInputUser,
-              password: foundProfile.password || cleanInputPass,
               group_name: foundProfile.group_name || null
             });
             setIsLoading(false);

@@ -19,7 +19,7 @@ export default function Header({
   const [pillStyle, setPillStyle] = useState({ left: 0, width: 0 });
 
   const tabs = [
-    { id: 'overview', label: 'Overview (Panduan)', icon: 'info' },
+    { id: 'overview', label: 'Overview', icon: 'info' },
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'students', label: 'Data Mahasiswa', icon: 'school' },
     ...(!isMentor ? [{ id: 'classes', label: 'Kelompok', icon: 'diversity_3' }] : []),

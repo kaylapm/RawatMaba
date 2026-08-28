@@ -369,7 +369,7 @@ export default function SubjectsView() {
                 <span className="text-xs font-sans-code font-bold bg-[#E59B86] text-white px-2.5 py-0.5 rounded-full">&lt; 60</span>
               </div>
               <p className="text-xs text-slate-600 font-isi">
-                Memerlukan pendampingan intensif dari mentor pembina kelompok.
+                Memerlukan pendampingan intensif dari mentor kelompok.
               </p>
             </div>
           </div>

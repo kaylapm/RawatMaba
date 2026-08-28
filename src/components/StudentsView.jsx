@@ -1,47 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function StudentsView({ students, onSelectStudent, onOpenInsertForStudent }) {
+export default function StudentsView({ students, onSelectStudent, onOpenInsertForStudent, onUpdateStudentEmail }) {
   const [search, setSearch] = useState('');
   const [filterProdi, setFilterProdi] = useState('ALL');
   const [filterGroup, setFilterGroup] = useState('ALL');
   const [filterPredicate, setFilterPredicate] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingEmailId, setEditingEmailId] = useState(null);
+  const [tempEmailValue, setTempEmailValue] = useState('');
+  const [savingEmailId, setSavingEmailId] = useState(null);
   const itemsPerPage = 9;
+
+  const handleStartEditEmail = (student) => {
+    setEditingEmailId(student.id);
+    setTempEmailValue(student.email || '');
+  };
+
+  const handleSaveEmail = async (studentId) => {
+    setSavingEmailId(studentId);
+    if (onUpdateStudentEmail) {
+      await onUpdateStudentEmail(studentId, tempEmailValue.trim());
+    }
+    setSavingEmailId(null);
+    setEditingEmailId(null);
+  };
 
   const prodiOptions = Array.from(new Set(students.map(s => s.prodi)));
   const groupOptions = Array.from(new Set(students.map(s => s.kelompok)));
-
-  // Scroll reveal observer for Student Cards Grid
-  const gridRef = useRef(null);
-  const [visibleCards, setVisibleCards] = useState({});
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, filterProdi, filterGroup, filterPredicate]);
-
-  useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          paginatedStudents.forEach((s, idx) => {
-            setTimeout(() => {
-              setVisibleCards(prev => ({ ...prev, [s.id]: true }));
-            }, idx * 70);
-          });
-        } else {
-          setVisibleCards({});
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [currentPage, search, filterProdi, filterGroup, filterPredicate]);
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = 
@@ -107,7 +97,7 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200">
-                2026
+                Mahasiswa Baru
               </span>
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen Sistem Informasi</span>
             </div>
@@ -115,7 +105,7 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
               Data Mahasiswa Sistem Informasi & Inovasi Digital
             </h1>
             <p className="text-xs text-slate-500 font-isi mt-0.5">
-              Daftar seluruh mahasiswa baru angkatan 2026 Departemen Sistem Informasi, status pengisian rapot 4 pilar, dan evaluasi mentoring.
+              Daftar seluruh mahasiswa baru Departemen Sistem Informasi, status pengisian rapot 4 pilar, dan evaluasi mentoring.
             </p>
           </div>
         </div>
@@ -195,17 +185,12 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
       </div>
 
       {/* ═══ Student Cards Grid (3x3 Layout) ═══ */}
-      <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paginatedStudents.map((student) => {
-          const isVisible = visibleCards[student.id];
-
-          return (
-            <div 
-              key={student.id}
-              className={`bg-white rounded-3xl p-6 shadow-gsm-card border border-gsm-lilac hover:shadow-gsm-hover transition-all duration-300 flex flex-col justify-between group ${
-                isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-6 scale-95'
-              }`}
-            >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {paginatedStudents.map((student) => (
+          <div 
+            key={student.id}
+            className="bg-white rounded-3xl p-6 shadow-gsm-card border border-gsm-lilac hover:shadow-gsm-hover transition-all duration-300 flex flex-col justify-between group"
+          >
               <div>
                 {/* Top Profile Header */}
                 <div className="flex items-center gap-3.5 mb-4">
@@ -235,8 +220,61 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-400 font-sans-code font-bold">Pembina:</span>
+                    <span className="text-[11px] text-slate-400 font-sans-code font-bold">Mentor:</span>
                     <span className="font-semibold text-slate-800 text-[11px] truncate max-w-[150px]">{student.mentor}</span>
+                  </div>
+                  
+                  {/* Email Peserta (Editable) */}
+                  <div className="flex justify-between items-center gap-2 pt-2 border-t border-slate-200/60">
+                    <span className="text-[11px] text-slate-400 font-sans-code font-bold flex-shrink-0">Email:</span>
+                    {editingEmailId === student.id ? (
+                      <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0">
+                        <input
+                          type="email"
+                          value={tempEmailValue}
+                          onChange={(e) => setTempEmailValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEmail(student.id);
+                            if (e.key === 'Escape') setEditingEmailId(null);
+                          }}
+                          placeholder="nama@email.com"
+                          autoFocus
+                          className="w-full max-w-[160px] bg-white border border-[#003CEC] rounded-lg px-2 py-0.5 text-[11px] font-sans-code text-slate-800 outline-none shadow-inner"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEmail(student.id)}
+                          disabled={savingEmailId === student.id}
+                          className="p-1 bg-[#003CEC] hover:bg-blue-700 text-white rounded-lg transition-all shadow-xs flex-shrink-0"
+                          title="Simpan Email"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            {savingEmailId === student.id ? 'progress_activity' : 'check'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingEmailId(null)}
+                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all flex-shrink-0"
+                          title="Batal"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">close</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => handleStartEditEmail(student)}
+                        className="flex items-center gap-1.5 cursor-pointer group/email truncate max-w-[180px]"
+                        title="Klik untuk memasukkan / mengubah email"
+                      >
+                        <span className={`text-[11px] font-sans-code truncate ${student.email ? 'text-slate-800 font-semibold' : 'text-blue-600 font-bold hover:underline'}`}>
+                          {student.email || '+ Tambah Email'}
+                        </span>
+                        <span className="material-symbols-outlined text-[13px] text-slate-400 group-hover/email:text-[#003CEC] transition-colors flex-shrink-0">
+                          {student.email ? 'edit' : 'add_circle'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -272,8 +310,7 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
                 </button>
               </div>
             </div>
-          );
-        })}
+        ))}
       </div>
 
       {/* ═══ Clean Sliding Window Pagination Controls (Max 5 Page Buttons) ═══ */}

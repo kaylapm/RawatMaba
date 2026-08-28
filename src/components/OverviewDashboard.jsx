@@ -273,7 +273,7 @@ export default function OverviewDashboard({
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-semibold text-slate-500 font-isi tracking-wide">Jumlah Mahasiswa Maba</span>
               <span className="bg-cyan-50 text-[#0082A0] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-gsm-cyan/30 font-sans-code tracking-wider">
-                2026
+                Aktif
               </span>
             </div>
             <div className="flex items-end gap-3 my-1">

@@ -105,7 +105,7 @@ export default function OverviewGuideView({ onOpenInsert, onOpenPdf, onOpenBatch
           {/* Description Text Badge */}
           <div className="bg-white/90 backdrop-blur-md px-7 sm:px-9 py-3.5 rounded-full border border-blue-100/90 shadow-md max-w-2xl mx-auto animate-in slide-in-from-bottom-4 duration-700 delay-200">
             <p className="text-xs sm:text-sm font-semibold text-slate-700 leading-relaxed tracking-wide font-isi">
-              Wadah resmi pengisian nilai rapot, evaluasi kelompok, dan penerbitan rapot digital Mahasiswa Baru HMSI Tahun 2026.
+              Wadah resmi pengisian nilai rapot, evaluasi kelompok, dan penerbitan rapot digital Mahasiswa Baru HMSI Kabinet Pilaraksi.
             </p>
           </div>
 

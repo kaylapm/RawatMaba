@@ -21,6 +21,7 @@ export async function fetchAllRealData() {
         id,
         nrp,
         name,
+        email,
         prodi,
         year,
         group_id,
@@ -38,6 +39,9 @@ export async function fetchAllRealData() {
           predicate,
           status,
           notes,
+          feedback_apresiasi,
+          feedback_saran,
+          feedback_oprec,
           updated_at
         )
       `);
@@ -78,7 +82,7 @@ export async function fetchAllRealData() {
     // Format DB Students with new rubrik structure
     const formattedStudents = dbStudents.map(s => {
       const groupName = s.mentoring_groups?.name || 'Kelompok Mentoring';
-      const mentorName = s.mentoring_groups?.mentors?.name || 'Pembina Mentoring';
+      const mentorName = s.mentoring_groups?.mentors?.name || 'Mentor Mentoring';
       const ev = s.rapot_evaluations?.[0] || s.rapot_evaluations || {};
 
       // Build scores object from all 17 indicators
@@ -93,6 +97,7 @@ export async function fetchAllRealData() {
         id: s.id,
         nim: s.nrp,
         name: s.name,
+        email: s.email || '',
         prodi: s.prodi,
         kelompok: groupName,
         mentor: mentorName,
@@ -107,6 +112,12 @@ export async function fetchAllRealData() {
           p4_score: Number(ev.p4_score || 0),
         },
         notes: ev.notes || `Belum dinilai oleh mentor kelompok ${groupName}.`,
+        feedback_apresiasi: ev.feedback_apresiasi || '',
+        feedback_saran: ev.feedback_saran || '',
+        feedback_oprec: ev.feedback_oprec || '',
+        feedbackApresiasi: ev.feedback_apresiasi || '',
+        feedbackSaran: ev.feedback_saran || '',
+        feedbackOprec: ev.feedback_oprec || '',
         lastUpdated: ev.updated_at ? new Date(ev.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Belum Diisi'
       };
     });
@@ -138,7 +149,7 @@ export async function fetchAllRealData() {
     const groupNames = Array.from(new Set(formattedStudents.map(s => s.kelompok)));
     const formattedClasses = groupNames.map((g, idx) => {
       const members = formattedStudents.filter(s => s.kelompok === g);
-      const mentorName = members[0]?.mentor || 'Pembina';
+      const mentorName = members[0]?.mentor || 'Mentor';
       const graded = members.filter(s => s.status !== 'Belum Dinilai');
       const membersCount = members.length;
       const gradedCount = graded.length;
@@ -367,6 +378,9 @@ export async function saveStudentGradeToSupabase(student) {
       predicate: String(student.predicate || '-'),
       status: String(student.status || 'Belum Dinilai'),
       notes: String(student.notes || ''),
+      feedback_apresiasi: String(student.feedback_apresiasi || student.feedbackApresiasi || ''),
+      feedback_saran: String(student.feedback_saran || student.feedbackSaran || ''),
+      feedback_oprec: String(student.feedback_oprec || student.feedbackOprec || ''),
       updated_at: new Date().toISOString()
     };
 
@@ -383,6 +397,28 @@ export async function saveStudentGradeToSupabase(student) {
     return { success: true, data };
   } catch (err) {
     console.error('Error saving evaluation to Supabase:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Update student email directly in Supabase students table
+export async function updateStudentEmailInSupabase(studentId, newEmail) {
+  try {
+    const cleanEmail = (newEmail || '').trim();
+    const { data, error } = await supabase
+      .from('students')
+      .update({ email: cleanEmail })
+      .eq('id', studentId);
+
+    if (error) {
+      console.error('Error updating student email in Supabase:', error);
+      return { success: false, error };
+    }
+
+    console.log('Successfully updated student email in Supabase DB for ID:', studentId);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Exception updating student email in Supabase:', err);
     return { success: false, error: err };
   }
 }

@@ -12,7 +12,7 @@ import EditProfileModal from './components/EditProfileModal';
 import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
-import { fetchAllRealData, saveStudentGradeToSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
+import { fetchAllRealData, saveStudentGradeToSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 Hours Session Stay
@@ -134,13 +134,31 @@ export default function App() {
     }
   };
 
+  const handleUpdateStudentEmail = async (studentId, newEmail) => {
+    // 1. Update state in RAM
+    setAllStudents(prev => prev.map(s => s.id === studentId ? { ...s, email: newEmail } : s));
+    
+    // 2. Persist to Supabase Database
+    const res = await updateStudentEmailInSupabase(studentId, newEmail);
+    if (res.success) {
+      showToast('Alamat email mahasiswa berhasil diperbarui!');
+    } else {
+      showToast('Gagal menyimpan email ke database.');
+    }
+  };
+
   const handleBatchSuccess = (filename) => {
     showToast(`Data rapot dari ${filename} berhasil diimpor!`);
   };
 
   const handleSelectStudentForPdf = (studentObj) => {
-    setSelectedStudent(studentObj || accessibleStudents[0]);
-    setIsPdfOpen(true);
+    if (studentObj) setSelectedStudent(studentObj);
+    setActiveTab('pdf');
+  };
+
+  const handleOpenInsertForSpecificStudent = (studentObj) => {
+    if (studentObj) setInsertTargetStudent(studentObj);
+    setActiveTab('insert');
   };
 
   const handleLogout = () => {
@@ -224,7 +242,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         currentUser={currentUser}
         onLogout={handleLogout}
-        onOpenInsert={() => setIsInsertOpen(true)}
+        onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
         onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
         onOpenEditProfile={() => setIsEditProfileOpen(true)}
       />
@@ -234,7 +252,7 @@ export default function App() {
         <div key={activeTab} className="animate-view-transition w-full">
           {activeTab === 'overview' && (
             <OverviewGuideView 
-              onOpenInsert={() => setIsInsertOpen(true)}
+              onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
               onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
               onOpenBatch={() => setIsBatchOpen(true)}
               setActiveTab={setActiveTab}
@@ -247,7 +265,7 @@ export default function App() {
               classes={accessibleClasses}
               notices={notices}
               searchTerm={searchTerm}
-              onOpenInsert={() => setIsInsertOpen(true)}
+              onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
               onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
               currentUser={currentUser}
               mentorLogins={mentorLogins}
@@ -260,9 +278,33 @@ export default function App() {
             <StudentsView 
               students={accessibleStudents}
               onSelectStudent={handleSelectStudentForPdf}
-              onOpenInsertForStudent={(student) => {
-                setInsertTargetStudent(student);
-                setIsInsertOpen(true);
+              onOpenInsertForStudent={handleOpenInsertForSpecificStudent}
+              onUpdateStudentEmail={handleUpdateStudentEmail}
+            />
+          )}
+
+          {activeTab === 'insert' && (
+            <InsertGradesModal 
+              isOpen={true}
+              isFullScreen={true}
+              onClose={() => { setActiveTab('students'); setInsertTargetStudent(null); }}
+              students={accessibleStudents}
+              onSaveGrade={handleSaveGrade}
+              initialStudentId={insertTargetStudent?.id || null}
+            />
+          )}
+
+          {activeTab === 'pdf' && (
+            <GeneratePdfModal 
+              isOpen={true}
+              isFullScreen={true}
+              onClose={() => setActiveTab('students')}
+              student={selectedStudent || accessibleStudents[0]}
+              students={accessibleStudents}
+              showToast={showToast}
+              onNavigateToInsert={(s) => {
+                setInsertTargetStudent(s);
+                setActiveTab('insert');
               }}
             />
           )}
@@ -272,7 +314,7 @@ export default function App() {
               classes={accessibleClasses}
               students={allStudents}
               mentorLogins={mentorLogins}
-              onOpenInsert={() => setIsInsertOpen(true)}
+              onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
             />
           )}
 
@@ -282,22 +324,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Modals & Dialogs */}
-      <InsertGradesModal 
-        isOpen={isInsertOpen}
-        onClose={() => { setIsInsertOpen(false); setInsertTargetStudent(null); }}
-        students={accessibleStudents}
-        onSaveGrade={handleSaveGrade}
-        initialStudentId={insertTargetStudent?.id || null}
-      />
-
-      <GeneratePdfModal 
-        isOpen={isPdfOpen}
-        onClose={() => setIsPdfOpen(false)}
-        student={selectedStudent || accessibleStudents[0]}
-        students={accessibleStudents}
-      />
-
+      {/* Modals & Dialogs for Secondary Functions */}
       <BatchUploadModal 
         isOpen={isBatchOpen}
         onClose={() => setIsBatchOpen(false)}

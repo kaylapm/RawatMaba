@@ -77,10 +77,10 @@ export default function ClassesView({ classes = [], students = [], mentorLogins 
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen HRD</span>
             </div>
             <h1 className="font-coolvetica font-bold text-2xl text-slate-900 mt-1">
-              Data Kelompok & Pembina Rawat Maba
+              Data Kelompok & Mentor Rawat Maba
             </h1>
             <p className="text-xs text-slate-500 font-isi mt-0.5">
-              Pemantauan progres penilaian rapot per kelompok mentoring dan status aktivitas pembina.
+              Pemantauan progres penilaian rapot per kelompok mentoring dan status aktivitas mentor.
             </p>
           </div>
         </div>
@@ -92,7 +92,7 @@ export default function ClassesView({ classes = [], students = [], mentorLogins 
             <span className="font-coolvetica font-bold text-xl text-gsm-blue-main">{classes.length} Kelompok</span>
           </div>
           <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl text-center shadow-sm">
-            <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Pembina Aktif</span>
+            <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Mentor Aktif</span>
             <span className="font-coolvetica font-bold text-xl text-slate-800">{uniqueMentorsCount} Mentor</span>
           </div>
         </div>

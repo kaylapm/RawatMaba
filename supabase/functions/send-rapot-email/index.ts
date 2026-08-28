@@ -55,163 +55,117 @@ serve(async (req: Request) => {
     const displayNrp = student_nim || '5026261001';
     const displayProdi = student_prodi || 'Sistem Informasi';
 
-    const subject = `[RAPOT RAWAT MABA 2026] Hasil Evaluasi - ${to_name} (${displayNrp})`;
+    const subject = `[RAPOT RAWAT MABA] Hasil Evaluasi - ${to_name} (${displayNrp})`;
 
-    // White Clean Base HTML Email Template with Official GSM Colors (#3852f6 Electric Blue, #60a5fa Soft Sky, #FFF1C5 Cream Gold)
+    // Clean Professional HTML Email Template — No emoji, no gradients, solid blue (#3852f6)
     const htmlBody = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rapot Rawat Maba 2026</title>
+  <title>Rapot Rawat Maba</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
   
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 12px;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 32px 12px;">
     <tr>
       <td align="center">
         
-        <!-- Main Email Container (Pure White) -->
-        <table width="620" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(56,82,246,0.12); border: 1px solid #e2e8f0;">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
           
-          <!-- Official GSM Blue Gradient Header Banner (#3852f6 -> #60a5fa) -->
+          <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #3852f6 0%, #60a5fa 100%); padding: 38px 40px 34px 40px; text-align: center; color: #ffffff;">
-              <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td align="center">
-                    <span style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: #FFF1C5; font-size: 11px; font-weight: 800; padding: 5px 18px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px;">
-                      ✨ HRD HMSI — KABINET PILARAKSI
-                    </span>
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2;">
-                      RAPOT RAWAT MABA 2026
-                    </h1>
-                    <p style="margin: 6px 0 0 0; font-size: 13px; color: #f0f9ff; font-weight: 500;">
-                      Lembar Hasil Evaluasi Karakter & Akademik Mahasiswa
-                    </p>
-                  </td>
-                </tr>
-              </table>
+            <td style="background-color: #1e3a5f; padding: 32px 40px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px;">
+                HRD HMSI - Kabinet Pilaraksi
+              </p>
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">
+                RAPOT RAWAT MABA
+              </h1>
+              <p style="margin: 6px 0 0 0; font-size: 12px; color: #cbd5e1;">
+                Lembar Hasil Evaluasi Karakter &amp; Akademik Mahasiswa
+              </p>
             </td>
           </tr>
 
-          <!-- Main Content Body -->
+          <!-- Body -->
           <tr>
-            <td style="padding: 36px 40px;">
+            <td style="padding: 32px 40px;">
               
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 800; color: #0f172a;">
-                Halo, ${to_name} 👋
-              </h2>
-              <p style="margin: 0 0 28px 0; font-size: 14px; line-height: 1.7; color: #475569;">
-                Berikut kami sampaikan hasil evaluasi resmi <strong>Rapot Rawat Maba 2026</strong> untuk Anda. 
-                Dokumen PDF resmi terlampir pada email ini sebagai bukti evaluasi resmi.
+              <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">
+                Halo, ${to_name}
+              </p>
+              <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.7; color: #475569;">
+                Berikut kami sampaikan hasil evaluasi resmi <strong>Rapot Rawat Maba</strong> untuk Anda. 
+                Dokumen PDF resmi terlampir pada email ini.
               </p>
 
-              <!-- Bento Details Grid (Table based) -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+              <!-- Student Info Table -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                <tr style="background-color: #f8fafc;">
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; width: 140px;">Nama</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${to_name}</td>
+                </tr>
                 <tr>
-                  <!-- Left: Student Info Card (Light Clean) -->
-                  <td width="56%" valign="top" style="padding-right: 8px;">
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 18px;">
-                      <tr>
-                        <td style="padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
-                          <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block;">NAMA MAHASISWA</span>
-                          <span style="font-size: 13px; font-weight: 700; color: #0f172a;">${to_name}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
-                          <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block;">NRP</span>
-                          <span style="font-size: 13px; font-weight: 700; color: #3852f6; font-family: monospace;">${displayNrp}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
-                          <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block;">PROGRAM STUDI</span>
-                          <span style="font-size: 13px; font-weight: 600; color: #334155;">${displayProdi}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
-                          <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block;">KELOMPOK</span>
-                          <span style="font-size: 13px; font-weight: 600; color: #334155;">${kelompok}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-top: 10px;">
-                          <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block;">MENTOR</span>
-                          <span style="font-size: 13px; font-weight: 600; color: #334155;">${mentor}</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">NRP</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; font-family: 'Courier New', monospace;">${displayNrp}</td>
+                </tr>
+                <tr style="background-color: #f8fafc;">
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Program Studi</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${displayProdi}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Kelompok</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${kelompok}</td>
+                </tr>
+                <tr style="background-color: #f8fafc;">
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Mentor</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${mentor}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Nilai Akhir</td>
+                  <td style="padding: 10px 16px; font-size: 16px; font-weight: 800; color: #1e3a5f;">${displayScore} <span style="font-size: 12px; font-weight: 600; color: #64748b;">(Predikat ${displayPredicate})</span></td>
+                </tr>
+              </table>
 
-                  <!-- Right: Final Score Bento Box (Official GSM Blue Gradient) -->
-                  <td width="44%" valign="top" style="padding-left: 8px;">
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background: linear-gradient(145deg, #3852f6 0%, #1e40af 100%); border-radius: 16px; padding: 22px 16px; text-align: center; height: 100%; box-shadow: 0 8px 24px rgba(56,82,246,0.25);">
-                      <tr>
-                        <td align="center" valign="middle">
-                          <span style="font-size: 10px; font-weight: 800; color: #FFF1C5; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 6px;">
-                            FINAL SCORE
-                          </span>
-                          <div style="font-size: 56px; font-weight: 900; color: #FFF1C5; line-height: 1; margin-bottom: 12px; font-family: Arial, sans-serif;">
-                            ${displayScore}
-                          </div>
-                          <div style="margin-bottom: 8px;">
-                            <span style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 50px; display: inline-block;">
-                              ★ Predikat ${displayPredicate}
-                            </span>
-                          </div>
-                          <div>
-                            <span style="background: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 50px; display: inline-block;">
-                              ✓ ${displayStatus}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
+              <!-- Status -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 10px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px; color: #166534; font-weight: 600;">
+                    Status: ${displayStatus}
                   </td>
                 </tr>
               </table>
 
-              <!-- Attachment Note Card -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 16px 20px; margin-bottom: 28px;">
+              <!-- Attachment Note -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
-                  <td style="font-size: 13px; color: #1e40af; line-height: 1.6;">
-                    📎 <strong>Lampiran PDF Resmi:</strong> Dokumen Rapot PDF resmi Anda sudah terlampir pada email ini. Harap simpan dokumen tersebut sebagai bukti evaluasi resmi.
+                  <td style="padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #475569; line-height: 1.6;">
+                    <strong>Lampiran PDF Resmi:</strong> Dokumen Rapot PDF resmi Anda sudah terlampir pada email ini. Harap simpan dokumen tersebut sebagai bukti evaluasi resmi.
                   </td>
                 </tr>
               </table>
 
-              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.65; color: #475569;">
+              <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.6; color: #475569;">
                 Jika terdapat pertanyaan mengenai hasil evaluasi ini, silakan berkonsultasi langsung dengan mentor kelompok Anda.
               </p>
 
-              <!-- Signature Block -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 700;">
-                      Salam hangat,<br>
-                      <span style="color: #3852f6; font-size: 15px;">HRD HMSI Kabinet Pilaraksi</span><br>
-                      <span style="font-size: 12px; color: #64748b; font-weight: normal;">Panitia Rawat Maba 2026</span>
-                    </p>
-                  </td>
-                </tr>
-              </table>
+              <!-- Signature -->
+              <p style="margin: 0; font-size: 13px; color: #0f172a; line-height: 1.6;">
+                Salam hangat,<br>
+                <strong>HRD HMSI Kabinet Pilaraksi</strong><br>
+                <span style="font-size: 12px; color: #64748b;">Panitia Rawat Maba</span>
+              </p>
 
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 40px; text-align: center;">
-              <p style="margin: 0 0 6px 0; font-size: 11px; color: #64748b;">
-                © 2026 HRD HMSI Kabinet Pilaraksi — All rights reserved.
-              </p>
-              <p style="margin: 0; font-size: 10px; color: #94a3b8;">
-                Email ini dikirimkan secara otomatis oleh Sistem Evaluasi Rapot Rawat Maba 2026.
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 40px; text-align: center;">
+              <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                Email ini dikirimkan secara otomatis oleh Sistem Evaluasi Rapot Rawat Maba.
               </p>
             </td>
           </tr>
@@ -234,10 +188,29 @@ serve(async (req: Request) => {
       },
     });
 
+    const textBody = `Halo ${to_name},
+
+Berikut kami sampaikan hasil evaluasi Rapot Rawat Maba:
+- Nama: ${to_name}
+- NRP: ${displayNrp}
+- Program Studi: ${displayProdi}
+- Kelompok: ${kelompok}
+- Mentor: ${mentor}
+- Nilai Akhir: ${displayScore}
+- Predikat: ${displayPredicate}
+- Status: ${displayStatus}
+
+Dokumen Rapot PDF resmi telah terlampir pada email ini.
+
+Salam hangat,
+HRD HMSI Kabinet Pilaraksi
+Panitia Rawat Maba`;
+
     const mailOptions: any = {
       from: `"HRD HMSI Pilaraksi" <${GMAIL_USER}>`,
       to: to_email,
       subject: subject,
+      text: textBody,
       html: htmlBody,
     };
 

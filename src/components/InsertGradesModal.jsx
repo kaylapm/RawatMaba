@@ -319,10 +319,20 @@ export function getPredicate(score) {
   return { grade: 'Perlu Pendampingan', text: 'Perlu Pendampingan Lanjutan', color: 'text-[#C86047] bg-[#E59B86]/20 border-[#E59B86]/40', desc: 'Peserta memerlukan pendampingan lanjutan intensif dari mentor sebelum mendaftar kepanitiaan.' };
 }
 
-export default function InsertGradesModal({ isOpen, onClose, students = [], onSaveGrade, initialStudentId }) {
+export default function InsertGradesModal({ 
+  isOpen, 
+  onClose, 
+  students = [], 
+  onSaveGrade, 
+  initialStudentId, 
+  isFullScreen = false 
+}) {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [activePillarTab, setActivePillarTab] = useState(0); // 0: P1, 1: P2, 2: P3, 3: P4, 4: Summary
   const [notes, setNotes] = useState('');
+  const [feedbackApresiasi, setFeedbackApresiasi] = useState('');
+  const [feedbackSaran, setFeedbackSaran] = useState('');
+  const [feedbackOprec, setFeedbackOprec] = useState('');
   const [openRubrikIndex, setOpenRubrikIndex] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -333,7 +343,7 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
   });
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || isFullScreen) {
       const targetId = initialStudentId || students[0]?.id || '';
       setSelectedStudentId(targetId);
       const student = students.find(s => s.id === targetId) || students[0];
@@ -341,7 +351,7 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
         loadStudentData(student);
       }
     }
-  }, [isOpen, initialStudentId, students]);
+  }, [isOpen, isFullScreen, initialStudentId, students]);
 
   const loadStudentData = (student) => {
     const sc = student.scores || {};
@@ -351,6 +361,9 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
     }));
     setScores(newScores);
     setNotes(student.notes || '');
+    setFeedbackApresiasi(student.feedback_apresiasi || student.feedbackApresiasi || '');
+    setFeedbackSaran(student.feedback_saran || student.feedbackSaran || '');
+    setFeedbackOprec(student.feedback_oprec || student.feedbackOprec || '');
     setActivePillarTab(0);
     setOpenRubrikIndex({});
   };
@@ -361,7 +374,7 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
     if (s) loadStudentData(s);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isFullScreen) return null;
 
   const currentStudent = students.find(s => s.id === selectedStudentId) || students[0] || {};
   const currentPillar = PILLARS[activePillarTab < 4 ? activePillarTab : 0];
@@ -373,6 +386,8 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
 
   const finalScore = calcFinalScore(scores);
   const predicateInfo = getPredicate(finalScore);
+
+  const countWords = (text = '') => text.trim() ? text.trim().split(/\s+/).length : 0;
 
   const setIndicatorScore = (key, val) => {
     setScores(prev => ({ ...prev, [key]: val }));
@@ -423,20 +438,23 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
       finalScore: safeFinalScore,
       predicate: safePredInfo.grade,
       status: safeFinalScore >= 75 ? 'Lulus' : (safeFinalScore >= 60 ? 'Perlu Latihan' : 'Perlu Pendampingan'),
-      notes: (notes || '').slice(0, 1000).trim() || `Mahasiswa telah dievaluasi pada 4 pilar mentoring Rawat Maba.`,
+      notes: (notes || '').slice(0, 1000).trim() || (feedbackApresiasi ? `${feedbackApresiasi} ${feedbackSaran}` : `Mahasiswa telah dievaluasi pada 4 pilar mentoring Rawat Maba.`),
+      feedback_apresiasi: feedbackApresiasi.trim(),
+      feedback_saran: feedbackSaran.trim(),
+      feedback_oprec: feedbackOprec.trim(),
+      feedbackApresiasi: feedbackApresiasi.trim(),
+      feedbackSaran: feedbackSaran.trim(),
+      feedbackOprec: feedbackOprec.trim(),
       lastUpdated: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
     await onSaveGrade(updatedStudentData);
     setIsSaving(false);
-    onClose();
+    if (onClose) onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 font-isi animate-in fade-in duration-200">
-      
-      {/* Modal Container */}
-      <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-gsm-lilac overflow-hidden flex flex-col max-h-[92vh]">
+  const renderCardContent = () => (
+    <div className={`relative w-full ${isFullScreen ? 'max-w-6xl mx-auto' : 'max-w-5xl'} bg-white rounded-3xl shadow-2xl border border-gsm-lilac overflow-hidden flex flex-col ${isFullScreen ? 'mb-10' : 'max-h-[92vh]'}`}>
         
         {/* ═══ 1. Spacious GSM Blue Gradient Header Banner with BG4.svg ═══ */}
         <div className="relative z-10 bg-gsm-blue-gradient text-white px-6 sm:px-8 py-6 flex flex-col justify-between overflow-hidden shadow-md flex-shrink-0">
@@ -463,7 +481,6 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
                   <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200 shadow-sm">
                     Form Penilaian Rapot Mentoring
                   </span>
-                  <span className="text-xs text-blue-100 font-sans-code font-semibold">T.A. 2026</span>
                 </div>
                 <h2 className="font-coolvetica font-bold text-2xl text-white mt-1 drop-shadow-sm">
                   Evaluasi Nilai Mahasiswa Baru
@@ -478,10 +495,10 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
             <button 
               type="button" 
               onClick={onClose}
-              className="text-white/80 hover:text-white bg-white/10 hover:bg-white/25 rounded-full p-2.5 transition-all border border-white/20"
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 text-white/80 hover:text-white flex items-center justify-center transition-all border border-white/20 flex-shrink-0 shadow-sm"
               title="Tutup Form"
             >
-              <span className="material-symbols-outlined text-xl leading-none">close</span>
+              <span className="material-symbols-outlined text-xl flex items-center justify-center leading-none select-none">close</span>
             </button>
           </div>
 
@@ -828,7 +845,7 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
                     {currentStudent.name || 'Nama Mahasiswa'}
                   </h3>
                   <p className="text-xs text-slate-500 font-sans-code mt-0.5">
-                    NRP: <strong className="text-slate-800">{currentStudent.nim}</strong> | Kelompok: <strong className="text-slate-800">{currentStudent.kelompok}</strong> | Pembina: <strong className="text-slate-800">{currentStudent.mentor}</strong>
+                    NRP: <strong className="text-slate-800">{currentStudent.nim}</strong> | Kelompok: <strong className="text-slate-800">{currentStudent.kelompok}</strong> | Mentor: <strong className="text-slate-800">{currentStudent.mentor}</strong>
                   </p>
                 </div>
 
@@ -944,19 +961,95 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
                 </div>
               </div>
 
-              {/* Notes & Feedback Textarea */}
-              <div className="bg-white rounded-3xl p-6 border border-gsm-lilac shadow-gsm-card space-y-2.5">
-                <label className="block text-xs font-bold text-slate-800 font-sans-code uppercase tracking-wider flex items-center gap-2">
-                  <span className="material-symbols-outlined text-gsm-blue-main text-base">rate_review</span>
-                  <span>Catatan Evaluasi & Rekomendasi Mentor:</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Berikan umpan balik konstruktif mengenai kekuatan, poin perbaikan CV/LinkedIn/Interview, serta kesiapan mahasiswa dalam mengikuti Open Recruitment..."
-                  className="w-full bg-slate-50 border border-gsm-lilac rounded-2xl p-4 text-xs font-isi text-slate-800 outline-none focus:border-gsm-blue-main focus:bg-white focus:ring-2 focus:ring-gsm-blue-main/10 transition-all leading-relaxed"
-                />
+              {/* 3 Dedicated Feedback from Mentor Fields (For Rapot Page 5) */}
+              <div className="bg-white rounded-3xl p-6 border border-gsm-lilac shadow-gsm-card space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-[#003CEC]/10 text-[#003CEC] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-lg">rate_review</span>
+                    </span>
+                    <div>
+                      <h4 className="font-coolvetica font-bold text-sm text-slate-900 uppercase tracking-wider">
+                        Feedback Khusus Mentor (Untuk Halaman 5 Rapot)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-isi">
+                        Diisi ke dalam 3 kartu surat resmi rapot. Maksimal 60 kata / 350 karakter per kartu agar tata letak surat tetap rapi.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-sans-code font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                    3 Bagian Surat
+                  </span>
+                </div>
+
+                {/* 1. Apresiasi */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 font-sans-code uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#003CEC]" />
+                      <span>1. Apresiasi Mentor</span>
+                    </label>
+                    <span className={`text-[10px] font-sans-code font-bold px-2 py-0.5 rounded-full ${
+                      countWords(feedbackApresiasi) > 60 ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {countWords(feedbackApresiasi)} / 60 kata ({feedbackApresiasi.length}/350 kar)
+                    </span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={350}
+                    value={feedbackApresiasi}
+                    onChange={(e) => setFeedbackApresiasi(e.target.value)}
+                    placeholder="Contoh: Peserta menunjukkan dedikasi, keaktifan, dan sikap proaktif yang sangat baik selama seluruh sesi mentoring..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs font-isi text-slate-800 outline-none focus:border-[#003CEC] focus:bg-white focus:ring-2 focus:ring-[#003CEC]/10 transition-all leading-relaxed"
+                  />
+                </div>
+
+                {/* 2. Saran Pengembangan */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 font-sans-code uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#00B0D8]" />
+                      <span>2. Saran Pengembangan</span>
+                    </label>
+                    <span className={`text-[10px] font-sans-code font-bold px-2 py-0.5 rounded-full ${
+                      countWords(feedbackSaran) > 60 ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {countWords(feedbackSaran)} / 60 kata ({feedbackSaran.length}/350 kar)
+                    </span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={350}
+                    value={feedbackSaran}
+                    onChange={(e) => setFeedbackSaran(e.target.value)}
+                    placeholder="Contoh: Perbanyak metrik pencapaian kuantitatif di CV dan pertegas struktur STAR saat menjawab simulasi interview..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs font-isi text-slate-800 outline-none focus:border-[#00B0D8] focus:bg-white focus:ring-2 focus:ring-[#00B0D8]/10 transition-all leading-relaxed"
+                  />
+                </div>
+
+                {/* 3. Catatan Persiapan Open Recruitment */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 font-sans-code uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#8A3AB9]" />
+                      <span>3. Catatan Persiapan Open Recruitment</span>
+                    </label>
+                    <span className={`text-[10px] font-sans-code font-bold px-2 py-0.5 rounded-full ${
+                      countWords(feedbackOprec) > 60 ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {countWords(feedbackOprec)} / 60 kata ({feedbackOprec.length}/350 kar)
+                    </span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={350}
+                    value={feedbackOprec}
+                    onChange={(e) => setFeedbackOprec(e.target.value)}
+                    placeholder="Contoh: Siapkan portofolio proyek dengan matang, pelajari profil kepanitiaan yang dituju, dan tetap optimis saat wawancara!"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs font-isi text-slate-800 outline-none focus:border-[#8A3AB9] focus:bg-white focus:ring-2 focus:ring-[#8A3AB9]/10 transition-all leading-relaxed"
+                  />
+                </div>
               </div>
 
               {/* Incomplete Warning */}
@@ -1023,7 +1116,19 @@ export default function InsertGradesModal({ isOpen, onClose, students = [], onSa
         </div>
 
       </div>
+  );
 
+  if (isFullScreen) {
+    return (
+      <div className="w-full font-isi animate-in fade-in duration-200">
+        {renderCardContent()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 font-isi animate-in fade-in duration-200">
+      {renderCardContent()}
     </div>
   );
 }
