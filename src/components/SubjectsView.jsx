@@ -57,11 +57,11 @@ export default function SubjectsView() {
     <div className="space-y-9 font-isi relative z-10 w-full">
       
       {/* ═══ 1. Academic Header Banner (GSM Standard) ═══ */}
-      <div className="relative bg-white p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-7 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+      <div className="relative bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-7 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
         
         {/* Watermark BG4.svg */}
         <div 
-          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.06] pointer-events-none z-0"
+          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.05] pointer-events-none z-0"
         />
 
         <div className="relative z-10 flex items-center gap-4">
@@ -71,26 +71,26 @@ export default function SubjectsView() {
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200">
-                Kurikulum Rubrik Penilaian
+                Rubrik Penilaian
               </span>
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen HRD</span>
             </div>
             <h1 className="font-coolvetica font-semibold text-xl sm:text-2xl text-slate-900 mt-2 leading-[1.5] tracking-[-0.025em]">
-              Kriteria & Rubrik Penilaian Rapot Mentoring
+              Kriteria Penilaian Mentoring
             </h1>
-            <p className="text-sm text-slate-500 font-isi mt-2 leading-6">
-              Standar 4 Pilar Utama, 17 Indikator Penilaian, dan Skala Skor 1–5 Berbasis Kompetensi
+            <p className="text-sm text-slate-500 font-isi mt-1.5 leading-6">
+              Panduan standar 4 pilar dan 17 indikator rubrik penilaian mahasiswa baru.
             </p>
           </div>
         </div>
 
         {/* Global Summary Badge */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="bg-blue-50 border border-gsm-lilac px-4 py-2.5 rounded-2xl text-center shadow-sm">
+          <div className="bg-blue-50/80 backdrop-blur-sm border border-gsm-lilac px-4 py-2.5 rounded-2xl text-center shadow-sm">
             <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Total Bobot</span>
             <span className="font-coolvetica font-bold text-xl text-gsm-blue-main">{totalBobotAll} Poin</span>
           </div>
-          <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl text-center shadow-sm">
+          <div className="bg-slate-50/80 backdrop-blur-sm border border-slate-200 px-4 py-2.5 rounded-2xl text-center shadow-sm">
             <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Indikator</span>
             <span className="font-coolvetica font-bold text-xl text-slate-800">{totalIndicatorsAll} Butir</span>
           </div>

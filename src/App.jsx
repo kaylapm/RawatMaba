@@ -12,7 +12,7 @@ import EditProfileModal from './components/EditProfileModal';
 import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
-import { fetchAllRealData, saveStudentGradeToSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
+import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 Hours Session Stay
@@ -190,6 +190,36 @@ export default function App() {
     }
   };
 
+  // Handler for clearing/resetting a student's grade
+  const handleClearGrade = async (studentId, studentName) => {
+    const res = await clearStudentGradeInSupabase(studentId);
+    if (res.success) {
+      // Reset local state for this student
+      setAllStudents(prev => prev.map(s => {
+        if (s.id !== studentId) return s;
+        const emptyScores = {};
+        Object.keys(s.scores || {}).forEach(k => { emptyScores[k] = 0; });
+        return {
+          ...s,
+          scores: emptyScores,
+          pillarScores: { p1_score: 0, p2_score: 0, p3_score: 0, p4_score: 0 },
+          finalScore: 0,
+          predicate: '-',
+          status: 'Belum Dinilai',
+          feedback_apresiasi: '',
+          feedback_saran: '',
+          feedback_oprec: '',
+          feedbackApresiasi: '',
+          feedbackSaran: '',
+          feedbackOprec: '',
+        };
+      }));
+      showToast(`Nilai ${studentName || 'mahasiswa'} berhasil direset ke 0.`);
+    } else {
+      showToast('Gagal menghapus nilai. Silakan coba lagi.');
+    }
+  };
+
   // IF NOT LOGGED IN: Render Login Page
   if (!currentUser) {
     return (
@@ -282,6 +312,7 @@ export default function App() {
               onSelectStudent={handleSelectStudentForPdf}
               onOpenInsertForStudent={handleOpenInsertForSpecificStudent}
               onUpdateStudentEmail={handleUpdateStudentEmail}
+              onClearGrade={handleClearGrade}
             />
           )}
 
@@ -317,6 +348,7 @@ export default function App() {
               students={allStudents}
               mentorLogins={mentorLogins}
               onOpenInsert={(student) => handleOpenInsertForSpecificStudent(student, 'classes')}
+              onClearGrade={handleClearGrade}
             />
           )}
 

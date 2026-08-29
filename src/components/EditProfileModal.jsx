@@ -97,11 +97,11 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
             style={{ backgroundImage: `url('/assets/Pattern Dot.png')` }}
           ></div>
 
-          {/* Decorative Adobe Express / Bintang Asset */}
+          {/* Decorative Asset */}
           <img 
             src="/assets/Adobe Express - file 2.png" 
-            alt="Asset 3D" 
-            className="absolute -right-3 -bottom-4 w-20 h-auto opacity-30 pointer-events-none rotate-12"
+            alt="Asset" 
+            className="absolute right-1 bottom-1 w-16 h-auto opacity-20 pointer-events-none select-none"
           />
 
           <div className="relative z-10 flex items-center justify-between">
@@ -117,8 +117,8 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
                 <h2 className="font-coolvetica font-bold text-xl text-slate-900 tracking-wide">
                   Pengaturan Akun
                 </h2>
-                <p className="text-xs text-slate-500 font-sans-code">
-                  Edit username & password login
+                <p className="text-xs text-slate-500 font-isi mt-0.5">
+                  Perbarui username dan password login Anda.
                 </p>
               </div>
             </div>

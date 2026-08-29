@@ -92,20 +92,20 @@ export default function OverviewGuideView({ onOpenInsert, onOpenPdf, onOpenBatch
             <img 
               src="/assets/JUDUL2.svg" 
               alt="Panduan & Overview Rapot Rawat Maba" 
-              className="w-full max-w-md sm:max-w-lg lg:max-w-2xl h-auto object-contain mx-auto drop-shadow-md transition-all duration-300 hover:scale-[1.01]"
+              className="w-full max-w-md sm:max-w-lg lg:max-w-2xl h-auto object-contain mx-auto drop-shadow-md select-none" 
             />
-            {/* Sub judul 2 enlarged as requested */}
+            {/* Sub judul 2 */}
             <img 
               src="/assets/sub judul2.png" 
-              alt="HMSI Tahun 2026 Kabinet Pilaraksi Subjudul" 
-              className="h-14 sm:h-20 lg:h-24 w-auto object-contain mx-auto drop-shadow-md transition-all duration-300 hover:scale-[1.03]"
+              alt="HMSI Kabinet Pilaraksi Subjudul" 
+              className="h-14 sm:h-20 lg:h-24 w-auto object-contain mx-auto drop-shadow-md select-none" 
             />
           </div>
 
           {/* Description Text Badge */}
           <div className="bg-white/90 backdrop-blur-md px-7 sm:px-9 py-3.5 rounded-full border border-blue-100/90 shadow-md max-w-2xl mx-auto animate-in slide-in-from-bottom-4 duration-700 delay-200">
             <p className="text-xs sm:text-sm font-semibold text-slate-700 leading-relaxed tracking-wide font-isi">
-              Wadah resmi pengisian nilai rapot, evaluasi kelompok, dan penerbitan rapot digital Mahasiswa Baru HMSI Kabinet Pilaraksi.
+              Platform evaluasi 4 pilar mentoring dan penerbitan rapot digital mahasiswa baru HMSI.
             </p>
           </div>
 

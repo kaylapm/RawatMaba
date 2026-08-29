@@ -3,15 +3,51 @@ import { initialClasses } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { updateUserLastLogin } from '../lib/dataService';
 
+// Daftar Kredensial Resmi 34 Mentor & Super Admin
+export const MENTOR_ACCOUNTS = {
+  webdev: { name: 'Super Administrator HRD', role: 'super_admin', pass: 'kerjarodi', group: null },
+  avemaris: { name: 'Avemaris Levanya', role: 'mentor', pass: 'GSM2026Shen', group: 'Lord Shen' },
+  althaf: { name: 'Naufal Althaf Rianzi', role: 'mentor', pass: 'GSM2026TaiLung', group: 'Tai Lung' },
+  bima: { name: 'Arya Bima Ramadhana', role: 'mentor', pass: 'GSM2026GenKai', group: 'General Kai' },
+  reyhan: { name: 'Reyhan Ariq Ramadhan', role: 'mentor', pass: 'GSM2026Chameleon', group: 'The Chameleon' },
+  jauza: { name: 'Jauza Nafi\' Ammar', role: 'mentor', pass: 'GSM2026Soothsayer', group: 'Soothsayer' },
+  vigo: { name: 'Vigo Bastian Maulana', role: 'mentor', pass: 'GSM2026Crane', group: 'Crane' },
+  syahrul: { name: 'Syahrul Ilham Ramadhan', role: 'mentor', pass: 'GSM2026FlyRhino', group: 'Master Flying Rhino' },
+  kukuh: { name: 'Kukuh Satrio Wibowo', role: 'mentor', pass: 'GSM2026LiShan', group: 'Li Shan' },
+  gedebagus: { name: 'Gede Bagus Gana', role: 'mentor', pass: 'GSM2026ZhenMother', group: 'Zhen\'s Mother' },
+  yusuf: { name: 'Yusuf Triandi W', role: 'mentor', pass: 'GSM2026MasterBear', group: 'Master Bear' },
+  kharisma: { name: 'Kharisma Putri Salsabila', role: 'mentor', pass: 'GSM2026Han', group: 'Han' },
+  nadia: { name: 'Nadia Dwi Ramadani', role: 'mentor', pass: 'GSM2026Scott', group: 'Scott' },
+  dimas: { name: 'Dimas Dwi Darmawan', role: 'mentor', pass: 'GSM2026Monkey', group: 'Monkey' },
+  belgis: { name: 'Belgis Alfiana Nurotul Qolbi', role: 'mentor', pass: 'GSM2026Zhen', group: 'Zhen' },
+  risa: { name: 'Risa Nayandra', role: 'mentor', pass: 'GSM2026ThundRhino', group: 'Master Thundering Rhino' },
+  adianto: { name: 'Adianto Baskoro', role: 'mentor', pass: 'GSM2026WolfBoss', group: 'Wolf Boss' },
+  adriel: { name: 'Wahyu Adriel Christoval', role: 'mentor', pass: 'GSM2026Bao', group: 'Bao' },
+  ilhamrizqi: { name: 'Ilham Rizqi Langit Semesta', role: 'mentor', pass: 'GSM2026MstChicken', group: 'Master Chicken' },
+  fauzta: { name: 'Fauzta Athallah Nayottama', role: 'mentor', pass: 'GSM2026Zeng', group: 'Zeng' },
+  elvira: { name: 'Elvirasari Latib', role: 'mentor', pass: 'GSM2026Mantis', group: 'Mantis' },
+  randy: { name: 'Randy Hazzaputra Riawan', role: 'mentor', pass: 'GSM2026GrannyBoar', group: 'Granny Boar' },
+  aisyah: { name: 'Aisyah Ayudya Pramudita Kandi', role: 'mentor', pass: 'GSM2026Tigress', group: 'Tigress' },
+  syafirah: { name: 'Syafirah Destiah Dinawati', role: 'mentor', pass: 'GSM2026MrPing', group: 'Mr. Ping' },
+  fransiskus: { name: 'Fransiskus Parulian Liwu', role: 'mentor', pass: 'GSM2026MeiMei', group: 'Mei Mei' },
+  alfian: { name: 'Alfian Krisna Zakharia', role: 'mentor', pass: 'GSM2026Viper', group: 'Viper' },
+  hami: { name: 'Hami Zuida Rizkiyah', role: 'mentor', pass: 'GSM2026MasterCroc', group: 'Master Croc' },
+  arfiya: { name: 'Arfiya Zahra Ramadhani', role: 'mentor', pass: 'GSM2026LeiLei', group: 'Lei Lei' },
+  davin: { name: 'Akhmad Davin Zufar Ramdani', role: 'mentor', pass: 'GSM2026Sum', group: 'Sum' },
+  aditya: { name: 'Aditya Chandra', role: 'mentor', pass: 'GSM2026StormOx', group: 'Master Storming Ox' },
+  farhan: { name: 'Muhammad Farhan Firdaus', role: 'mentor', pass: 'GSM2026Po', group: 'Po' },
+  karleon: { name: 'Karleon Naufal Dzaki', role: 'mentor', pass: 'GSM2026Porcupine', group: 'Master Porcupine' },
+  safratul: { name: 'Safratul Ulyaa Zahari', role: 'mentor', pass: 'GSM2026Dim', group: 'Dim' },
+  tiara: { name: 'Tiara Kumala Farid', role: 'mentor', pass: 'GSM2026MasterShifu', group: 'Master Shifu' },
+  gahyaka: { name: 'Gahyaka Galur Widyatmana', role: 'mentor', pass: 'GSM2026MasterOogway', group: 'Master Oogway' },
+};
+
 export default function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Valid mentor list from initialClasses
-  const validMentorNames = Array.from(new Set(initialClasses.map(c => c.mentor).filter(Boolean)));
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -20,109 +56,74 @@ export default function LoginPage({ onLoginSuccess }) {
 
     const cleanInputUser = username.trim();
     const cleanInputPass = password.trim();
-    const userLower = cleanInputUser.toLowerCase();
 
     try {
-      // 1. Query Supabase specifically for the entered user to prevent data leakage in DevTools
+      // 1. Query Supabase (safe select columns that exist in schema)
       const { data: dbProfiles, error: dbErr } = await supabase
         .from('profiles')
-        .select('id, name, role, username, password, group_name')
-        .or(`username.ilike.${cleanInputUser},name.ilike.%${cleanInputUser}%`)
-        .limit(5);
+        .select('id, name, role, username, password')
+        .eq('username', cleanInputUser)
+        .limit(2);
 
       if (!dbErr && dbProfiles && dbProfiles.length > 0) {
-        const foundProfile = dbProfiles.find(p => {
-          const u = (p.username || '').toLowerCase().trim();
-          const n = (p.name || '').toLowerCase().trim();
-          return u === userLower || n === userLower || n.includes(userLower) || userLower.includes(n.split(' ')[0]);
-        });
+        // Strict JavaScript case-sensitive check
+        const foundProfile = dbProfiles.find(p => (p.username || '') === cleanInputUser);
 
         if (foundProfile) {
-          const expectedPass = foundProfile.password ? String(foundProfile.password).trim() : null;
-          const isSuperAdmin = foundProfile.role === 'super_admin' || foundProfile.username === 'webdev';
-          const isDefaultMatch = isSuperAdmin 
-            ? (cleanInputPass === 'kerjarodi') 
-            : (cleanInputPass === '123' || cleanInputPass === 'mentor123');
-
+          const expectedPass = foundProfile.password ? String(foundProfile.password) : null;
+          const fallbackData = MENTOR_ACCOUNTS[cleanInputUser];
           const isPasswordCorrect = expectedPass 
-            ? (cleanInputPass === expectedPass || isDefaultMatch)
-            : isDefaultMatch;
+            ? (cleanInputPass === expectedPass)
+            : (fallbackData ? cleanInputPass === fallbackData.pass : cleanInputPass === '123');
 
           if (isPasswordCorrect) {
             // Record last_login_at in database
             await updateUserLastLogin({ name: foundProfile.name, username: foundProfile.username });
 
-            // Do NOT store plain password in client state/storage
+            const matchingGroup = fallbackData?.group || initialClasses.find(c => (c.mentor || '').toLowerCase() === (foundProfile.name || '').toLowerCase())?.name || null;
+
             onLoginSuccess({
               id: foundProfile.id || `user-${foundProfile.username}`,
               name: foundProfile.name || foundProfile.username,
-              role: foundProfile.role || (isSuperAdmin ? 'super_admin' : 'mentor'),
-              username: foundProfile.username || cleanInputUser,
-              group_name: foundProfile.group_name || null
+              role: foundProfile.role || (foundProfile.username === 'webdev' ? 'super_admin' : 'mentor'),
+              username: foundProfile.username,
+              group_name: matchingGroup
             });
             setIsLoading(false);
             return;
           } else {
-            setErrorMsg('Password salah. Silakan periksa kembali password Anda.');
+            setErrorMsg('Password salah. Silakan periksa kembali password Anda (case-sensitive).');
             setIsLoading(false);
             return;
           }
         }
       }
     } catch (err) {
-      console.warn('Supabase query during login failed, checking fallbacks:', err);
+      console.warn('Supabase query during login failed, checking fallback:', err);
     }
 
-    // 2. Offline / Hardcoded Fallbacks
-    // A. Super Admin Fallback
-    if (userLower === 'webdev' || userLower === 'superadmin') {
-      if (cleanInputPass === 'kerjarodi' || cleanInputPass === 'Webdev123') {
+    // 2. Strict Offline / Hardcoded Fallbacks for all 34 Mentors + Super Admin
+    if (MENTOR_ACCOUNTS[cleanInputUser]) {
+      const acc = MENTOR_ACCOUNTS[cleanInputUser];
+      if (cleanInputPass === acc.pass) {
         onLoginSuccess({
-          id: 'admin-super-01',
-          name: 'Super Admin Webdev',
-          role: 'super_admin',
-          username: 'webdev',
-          mentorGroup: null
+          id: `user-${cleanInputUser}`,
+          name: acc.name,
+          role: acc.role,
+          username: cleanInputUser,
+          group_name: acc.group
         });
         setIsLoading(false);
         return;
       } else {
-        setErrorMsg('Password salah. Silakan periksa kembali password Anda.');
+        setErrorMsg('Password salah. Silakan periksa kembali password Anda (case-sensitive).');
         setIsLoading(false);
         return;
       }
     }
 
-    // B. Mentor Fallback
-    const foundMentor = validMentorNames.find(mName => {
-      const mLower = mName.toLowerCase();
-      const firstWord = mLower.split(' ')[0];
-      return mLower === userLower || 
-             mLower.includes(userLower) || 
-             userLower.includes(firstWord) ||
-             userLower.replace(/[^a-z]/g, '').includes(mLower.replace(/[^a-z]/g, ''));
-    });
-
-    if (foundMentor) {
-      if (cleanInputPass === '123' || cleanInputPass === 'mentor123') {
-        onLoginSuccess({
-          id: `mentor-${foundMentor.toLowerCase().replace(/\s+/g, '-')}`,
-          name: foundMentor,
-          role: 'mentor',
-          username: foundMentor,
-          mentorGroup: null
-        });
-        setIsLoading(false);
-        return;
-      } else {
-        setErrorMsg('Password salah. Password standar mentor adalah 123.');
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    // If account not found in database or fallback list
-    setErrorMsg(`Akun "${cleanInputUser}" tidak terdaftar di database Mentor atau Admin. Silakan periksa kembali.`);
+    // If account not found (or case does not match exactly)
+    setErrorMsg(`Username "${cleanInputUser}" tidak ditemukan. Pastikan huruf besar/kecil (case-sensitive) sudah sesuai.`);
     setIsLoading(false);
   };
 
