@@ -46,7 +46,10 @@ export default function GeneratePdfModal({
     : `Kelompok ${currentStudent.kelompok || '-'}`;
 
   const rawMentorName = (currentStudent.mentor || '').replace(/^Kak\s*/i, '').trim();
-  const mentorTwoWords = rawMentorName ? rawMentorName.split(/\s+/).slice(0, 2).join(' ') : '-';
+  const mentorTwoWords = rawMentorName || '-';
+  const coverMetaLength = String(currentStudent.nim || '').length + kelompokDisplay.length;
+  const coverMetaFontSize = coverMetaLength > 34 ? '10px' : coverMetaLength > 28 ? '11px' : '13px';
+  const mentorFontSize = mentorTwoWords.length > 24 ? '9px' : mentorTwoWords.length > 18 ? '10px' : '12px';
 
   // Group average score calculation
   const groupStudents = (students || []).filter(s => {
@@ -213,6 +216,7 @@ export default function GeneratePdfModal({
           nilai_akhir: currentStudent.finalScore,
           predikat: predicateLabel,
           status: currentStudent.status,
+          logo_url: new URL('/assets/Logo%20HRD.png', window.location.origin).href,
           pdf_base64: pdfBase64,
           pdf_filename: pdfFilename,
         },
@@ -401,7 +405,10 @@ export default function GeneratePdfModal({
         className="absolute z-10 flex items-center justify-center pointer-events-none px-2"
         style={{ top: '70.78%', left: '22.86%', right: '22.86%', height: '3.72%' }}
       >
-        <p className="font-isi font-extrabold text-xs sm:text-sm md:text-[16px] text-[#003CEC] tracking-normal text-center truncate leading-none">
+        <p
+          className="font-isi font-semibold text-[#003CEC] tracking-normal text-center whitespace-nowrap leading-none"
+          style={{ fontSize: coverMetaFontSize }}
+        >
           NRP. <span className="font-sans-code">{currentStudent.nim || '502624XXXX'}</span>
           <span className="mx-2 text-[#003CEC]">•</span>
           <span>{kelompokDisplay}</span>
@@ -413,7 +420,10 @@ export default function GeneratePdfModal({
         className="absolute z-10 flex items-center justify-center pointer-events-none px-3"
         style={{ top: '74.5%', left: '54.5%', right: '23%', height: '4.8%' }}
       >
-        <p className="font-isi font-extrabold text-xs sm:text-sm md:text-[16px] text-white text-center truncate leading-none">
+        <p
+          className="font-isi font-semibold text-white text-center whitespace-nowrap leading-none"
+          style={{ fontSize: mentorFontSize }}
+        >
           {mentorTwoWords}
         </p>
       </div>
@@ -479,13 +489,13 @@ export default function GeneratePdfModal({
 
         {/* Right Info: Student Name, NRP, and Group/Mentor (Without "Kak") */}
         <div className="flex flex-col justify-center min-w-0 pr-2">
-          <h2 className="font-serif-judul font-bold text-sm sm:text-base md:text-lg lg:text-xl text-white truncate leading-tight tracking-tight drop-shadow-sm">
+          <h2 className="font-serif-judul font-bold text-sm sm:text-base md:text-lg lg:text-xl text-white leading-tight tracking-tight drop-shadow-sm whitespace-normal">
             {currentStudent.name || 'Nama Peserta'}
           </h2>
           <p className="font-sans-code font-bold text-[10px] sm:text-xs text-white/95 mt-1 drop-shadow-sm">
             NRP. {currentStudent.nim || '502624XXXX'}
           </p>
-          <p className="font-isi text-[10px] sm:text-xs text-white/90 mt-0.5 truncate drop-shadow-sm">
+          <p className="font-isi text-[9px] sm:text-[10px] text-white/90 mt-0.5 drop-shadow-sm leading-4 whitespace-normal">
             {kelompokDisplay} <span className="mx-1.5 opacity-75">•</span> Mentor : {mentorTwoWords}
           </p>
         </div>
@@ -503,7 +513,7 @@ export default function GeneratePdfModal({
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#003CEC] to-[#0066FF] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-blue-500/30 flex-shrink-0">
                 P1
               </span>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 truncate">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 whitespace-nowrap">
                 CV & Portofolio
               </span>
             </div>
@@ -526,7 +536,7 @@ export default function GeneratePdfModal({
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#00B0D8] to-[#22D3EE] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-cyan-500/30 flex-shrink-0">
                 P2
               </span>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 truncate">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 whitespace-nowrap">
                 Optimalisasi LinkedIn
               </span>
             </div>
@@ -549,7 +559,7 @@ export default function GeneratePdfModal({
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#8A3AB9] to-[#C896E0] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-purple-500/30 flex-shrink-0">
                 P3
               </span>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 truncate">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 whitespace-nowrap">
                 Simulasi Interview
               </span>
             </div>
@@ -572,7 +582,7 @@ export default function GeneratePdfModal({
               <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-[#C86047] to-[#E59B86] text-white text-[10px] font-bold font-sans-code flex items-center justify-center shadow-sm shadow-orange-500/30 flex-shrink-0">
                 P4
               </span>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 truncate">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 whitespace-nowrap">
                 Sikap & Partisipasi
               </span>
             </div>
@@ -607,7 +617,7 @@ export default function GeneratePdfModal({
       >
         <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-xl rounded-full text-white font-bold text-[10px] sm:text-xs border border-white/40 shadow-inner max-w-full">
           <span className="text-[#FEF08A] text-xs">✦</span>
-          <span className="truncate">{predicateLabel}</span>
+          <span className="whitespace-nowrap text-[9px]">{predicateLabel}</span>
         </div>
       </div>
 
@@ -644,7 +654,7 @@ export default function GeneratePdfModal({
                   <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#003CEC]/15 backdrop-blur-sm border border-[#003CEC]/20 text-[#003CEC] font-bold text-[8.5px] font-sans-code">
                     P1
                   </span>
-                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[9px] sm:text-[10px] text-slate-900 whitespace-nowrap">
                     CV & Portofolio
                   </span>
                 </div>
@@ -656,15 +666,15 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Format CV ATS / Creative & Kerapian Layout</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Format CV ATS / Creative & Kerapian Layout</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Kualitas Penulisan, Data Terukur & Action Verbs</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Kualitas Penulisan, Data Terukur & Action Verbs</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC] shadow-[0_0_4px_rgba(0,60,236,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Kesesuaian Pengalaman & Relevansi Divisi</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Kesesuaian Pengalaman & Relevansi Divisi</span>
                 </li>
               </ul>
             </div>
@@ -685,7 +695,7 @@ export default function GeneratePdfModal({
                   <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#00B0D8]/15 backdrop-blur-sm border border-[#00B0D8]/20 text-[#0082A0] font-bold text-[8.5px] font-sans-code">
                     P2
                   </span>
-                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[9px] sm:text-[10px] text-slate-900 whitespace-nowrap">
                     Optimalisasi LinkedIn
                   </span>
                 </div>
@@ -697,15 +707,15 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Foto Profil & Banner Profesional Menarik</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Foto Profil & Banner Profesional Menarik</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Headline Menjual & Ringkasan About Summary</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Headline Menjual & Ringkasan About Summary</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00B0D8] shadow-[0_0_4px_rgba(0,176,216,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Kelengkapan Experience, Skills & Projects</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Kelengkapan Experience, Skills & Projects</span>
                 </li>
               </ul>
             </div>
@@ -726,7 +736,7 @@ export default function GeneratePdfModal({
                   <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#C896E0]/25 backdrop-blur-sm border border-[#C896E0]/30 text-[#8A3AB9] font-bold text-[8.5px] font-sans-code">
                     P3
                   </span>
-                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[9px] sm:text-[10px] text-slate-900 whitespace-nowrap">
                     Simulasi Interview
                   </span>
                 </div>
@@ -738,15 +748,15 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Artikulasi Jelas, Sikap Tubuh & Eye Contact</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Artikulasi Jelas, Sikap Tubuh & Eye Contact</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Struktur Jawaban STAR & Relevansi Konteks</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Struktur Jawaban STAR & Relevansi Konteks</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#8A3AB9] shadow-[0_0_4px_rgba(138,58,185,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Ketepatan Menjawab Pertanyaan Sulit</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Ketepatan Menjawab Pertanyaan Sulit</span>
                 </li>
               </ul>
             </div>
@@ -767,7 +777,7 @@ export default function GeneratePdfModal({
                   <span className="inline-block h-4 leading-4 px-1.5 text-center rounded-md bg-[#E59B86]/25 backdrop-blur-sm border border-[#E59B86]/30 text-[#C86047] font-bold text-[8.5px] font-sans-code">
                     P4
                   </span>
-                  <span className="leading-none font-bold text-[10px] sm:text-[11px] text-slate-900 truncate">
+                  <span className="leading-none font-bold text-[9px] sm:text-[10px] text-slate-900 whitespace-nowrap">
                     Sikap & Partisipasi
                   </span>
                 </div>
@@ -779,15 +789,15 @@ export default function GeneratePdfModal({
               <ul className="mt-1 sm:mt-1.5 space-y-0.5 text-[8px] sm:text-[9px] text-slate-700 font-isi">
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Ketepatan Waktu Presensi & Kehadiran Sesi</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Ketepatan Waktu Presensi & Kehadiran Sesi</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Keaktifan Berdiskusi & Antusiasme Mentoring</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Keaktifan Berdiskusi & Antusiasme Mentoring</span>
                 </li>
                 <li className="flex items-center gap-1.5 bg-white/40 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C86047] shadow-[0_0_4px_rgba(200,96,71,0.5)] flex-shrink-0" />
-                  <span className="truncate font-medium leading-none">Etika, Sikap Menghargai & Respon Feedback</span>
+                  <span className="font-medium leading-[1.25] whitespace-normal">Etika, Sikap Menghargai & Respon Feedback</span>
                 </li>
               </ul>
             </div>

@@ -101,10 +101,10 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
               </span>
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen Sistem Informasi</span>
             </div>
-            <h1 className="font-coolvetica font-bold text-2xl text-slate-900 mt-1">
+            <h1 className="font-coolvetica font-semibold text-xl sm:text-2xl text-slate-900 mt-2 leading-[1.5] tracking-[-0.025em]">
               Data Mahasiswa Sistem Informasi & Inovasi Digital
             </h1>
-            <p className="text-xs text-slate-500 font-isi mt-0.5">
+            <p className="text-sm text-slate-500 font-isi mt-2 leading-6">
               Daftar seluruh mahasiswa baru Departemen Sistem Informasi, status pengisian rapot 4 pilar, dan evaluasi mentoring.
             </p>
           </div>

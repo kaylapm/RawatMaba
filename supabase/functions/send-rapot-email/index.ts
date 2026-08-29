@@ -31,6 +31,7 @@ serve(async (req: Request) => {
       nilai_akhir,
       predikat,
       status,
+      logo_url,
       pdf_base64,
       pdf_filename,
     } = body;
@@ -54,6 +55,9 @@ serve(async (req: Request) => {
     const displayStatus = (status && status !== 'Belum Dinilai') ? status : 'LULUS (Sangat Baik)';
     const displayNrp = student_nim || '5026261001';
     const displayProdi = student_prodi || 'Sistem Informasi';
+    const safeLogoUrl = typeof logo_url === 'string' && /^https:\/\//i.test(logo_url)
+      ? logo_url
+      : '';
 
     const subject = `[RAPOT RAWAT MABA] Hasil Evaluasi - ${to_name} (${displayNrp})`;
 
@@ -66,26 +70,35 @@ serve(async (req: Request) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rapot Rawat Maba</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 0; background-color: #f4f6fb; font-family: 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
   
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 32px 12px;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6fb; padding: 36px 12px;">
     <tr>
       <td align="center">
         
-        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 14px; overflow: hidden; border: 1px solid #dfe5f2; border-top: 6px solid #003cec;">
           
           <!-- Header -->
           <tr>
-            <td style="background-color: #1e3a5f; padding: 32px 40px; text-align: center;">
-              <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px;">
-                HRD HMSI - Kabinet Pilaraksi
-              </p>
-              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">
-                RAPOT RAWAT MABA
-              </h1>
-              <p style="margin: 6px 0 0 0; font-size: 12px; color: #cbd5e1;">
-                Lembar Hasil Evaluasi Karakter &amp; Akademik Mahasiswa
-              </p>
+            <td style="background-color: #ffffff; padding: 28px 40px; border-bottom: 1px solid #e2e8f0;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="72" valign="middle">
+                    ${safeLogoUrl ? `<img src="${safeLogoUrl}" width="56" height="56" alt="Logo HRD HMSI" style="display: block; width: 56px; height: 56px; object-fit: contain;">` : ''}
+                  </td>
+                  <td valign="middle" style="text-align: left;">
+                    <p style="margin: 0 0 5px 0; font-size: 11px; font-weight: 600; color: #003cec; text-transform: uppercase; letter-spacing: 1.2px;">
+                      Departemen HRD HMSI
+                    </p>
+                    <h1 style="margin: 0; font-size: 21px; line-height: 1.35; font-weight: 700; color: #0f172a; letter-spacing: -0.35px;">
+                      Rapot Rawat Maba
+                    </h1>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; line-height: 1.5; color: #64748b;">
+                      Hasil evaluasi mentoring mahasiswa baru
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -93,17 +106,17 @@ serve(async (req: Request) => {
           <tr>
             <td style="padding: 32px 40px;">
               
-              <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">
+              <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #0f172a;">
                 Halo, ${to_name}
               </p>
-              <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.7; color: #475569;">
+              <p style="margin: 0 0 28px 0; font-size: 13px; line-height: 1.8; color: #475569;">
                 Berikut kami sampaikan hasil evaluasi resmi <strong>Rapot Rawat Maba</strong> untuk Anda. 
                 Dokumen PDF resmi terlampir pada email ini.
               </p>
 
               <!-- Student Info Table -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                <tr style="background-color: #f8fafc;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 22px; border: 1px solid #dfe5f2; border-radius: 8px; overflow: hidden;">
+                <tr>
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; width: 140px;">Nama</td>
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${to_name}</td>
                 </tr>
@@ -111,7 +124,7 @@ serve(async (req: Request) => {
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">NRP</td>
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; font-family: 'Courier New', monospace;">${displayNrp}</td>
                 </tr>
-                <tr style="background-color: #f8fafc;">
+                <tr>
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Program Studi</td>
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${displayProdi}</td>
                 </tr>
@@ -119,21 +132,21 @@ serve(async (req: Request) => {
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Kelompok</td>
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${kelompok}</td>
                 </tr>
-                <tr style="background-color: #f8fafc;">
+                <tr>
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Mentor</td>
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${mentor}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Nilai Akhir</td>
-                  <td style="padding: 10px 16px; font-size: 16px; font-weight: 800; color: #1e3a5f;">${displayScore} <span style="font-size: 12px; font-weight: 600; color: #64748b;">(Predikat ${displayPredicate})</span></td>
+                  <td style="padding: 12px 16px; font-size: 18px; font-weight: 700; color: #003cec;">${displayScore} <span style="font-size: 12px; font-weight: 500; color: #64748b;">dari 100 · ${displayPredicate}</span></td>
                 </tr>
               </table>
 
               <!-- Status -->
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
-                  <td style="padding: 10px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px; color: #166534; font-weight: 600;">
-                    Status: ${displayStatus}
+                  <td style="padding: 12px 16px; background-color: #f4f6c0; border-left: 3px solid #003cec; font-size: 13px; color: #0f172a; font-weight: 600;">
+                    Status evaluasi: ${displayStatus}
                   </td>
                 </tr>
               </table>
@@ -141,7 +154,7 @@ serve(async (req: Request) => {
               <!-- Attachment Note -->
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
-                  <td style="padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #475569; line-height: 1.6;">
+                  <td style="padding: 14px 16px; background-color: #f8faff; border: 1px solid #dbe4ff; border-radius: 8px; font-size: 12px; color: #475569; line-height: 1.7;">
                     <strong>Lampiran PDF Resmi:</strong> Dokumen Rapot PDF resmi Anda sudah terlampir pada email ini. Harap simpan dokumen tersebut sebagai bukti evaluasi resmi.
                   </td>
                 </tr>
@@ -163,7 +176,7 @@ serve(async (req: Request) => {
 
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 40px; text-align: center;">
+            <td style="background-color: #f8faff; border-top: 1px solid #e2e8f0; padding: 20px 40px; text-align: center;">
               <p style="margin: 0; font-size: 11px; color: #94a3b8;">
                 Email ini dikirimkan secara otomatis oleh Sistem Evaluasi Rapot Rawat Maba.
               </p>

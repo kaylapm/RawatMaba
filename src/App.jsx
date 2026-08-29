@@ -48,6 +48,7 @@ export default function App() {
   // Modals visibility state
   const [isInsertOpen, setIsInsertOpen] = useState(false);
   const [insertTargetStudent, setInsertTargetStudent] = useState(null);
+  const [insertReturnTab, setInsertReturnTab] = useState('students');
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -156,8 +157,9 @@ export default function App() {
     setActiveTab('pdf');
   };
 
-  const handleOpenInsertForSpecificStudent = (studentObj) => {
+  const handleOpenInsertForSpecificStudent = (studentObj, returnTab = 'students') => {
     if (studentObj) setInsertTargetStudent(studentObj);
+    setInsertReturnTab(returnTab);
     setActiveTab('insert');
   };
 
@@ -287,7 +289,7 @@ export default function App() {
             <InsertGradesModal 
               isOpen={true}
               isFullScreen={true}
-              onClose={() => { setActiveTab('students'); setInsertTargetStudent(null); }}
+              onClose={() => { setActiveTab(insertReturnTab); setInsertTargetStudent(null); }}
               students={accessibleStudents}
               onSaveGrade={handleSaveGrade}
               initialStudentId={insertTargetStudent?.id || null}
@@ -314,7 +316,7 @@ export default function App() {
               classes={accessibleClasses}
               students={allStudents}
               mentorLogins={mentorLogins}
-              onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
+              onOpenInsert={(student) => handleOpenInsertForSpecificStudent(student, 'classes')}
             />
           )}
 

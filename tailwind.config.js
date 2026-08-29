@@ -16,11 +16,17 @@ export default {
         'gsm-dark-blue': '#0A1128',
       },
       fontFamily: {
-        'sans': ['Reddit Sans', 'sans-serif'],
-        'coolvetica': ['Space Grotesk', 'Coolvetica', 'sans-serif'],
-        'serif-judul': ['Merriweather', 'serif'],
-        'isi': ['Reddit Sans', 'sans-serif'],
-        'sans-code': ['Fira Code', 'monospace'],
+        'sans': ['Plus Jakarta Sans', 'sans-serif'],
+        'coolvetica': ['Manrope', 'Plus Jakarta Sans', 'sans-serif'],
+        'serif-judul': ['Manrope', 'Plus Jakarta Sans', 'sans-serif'],
+        'isi': ['Plus Jakarta Sans', 'sans-serif'],
+        'reddit': ['Plus Jakarta Sans', 'sans-serif'],
+        'sans-code': ['Plus Jakarta Sans', 'sans-serif'],
+      },
+      fontWeight: {
+        'semibold': '600',
+        'bold': '600',
+        'extrabold': '700',
       },
       backgroundImage: {
         'gsm-blue-gradient': 'linear-gradient(135deg, #003CEC 0%, #00B0D8 62%)',
