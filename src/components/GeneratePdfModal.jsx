@@ -80,6 +80,16 @@ export default function GeneratePdfModal({
   const predicateLabel = currentStudent.predicate && currentStudent.predicate !== '-' 
     ? currentStudent.predicate 
     : predicateInfo.grade;
+  const numericFinalScore = Number(currentStudent.finalScore);
+  const hasEvaluation = Number.isFinite(numericFinalScore) && numericFinalScore > 0 && numericFinalScore <= 100;
+  const emailPredicate = hasEvaluation ? predicateInfo.grade : '-';
+  const evaluationStatusForEmail = !hasEvaluation
+    ? 'Belum Dinilai'
+    : numericFinalScore >= 75
+      ? 'Lulus'
+      : numericFinalScore >= 60
+        ? 'Perlu Latihan'
+        : 'Perlu Pendampingan';
 
   // Helper: Overall rank calculation across all students
   const sortedStudents = [...(students || [])].sort((a, b) => (Number(b.finalScore) || 0) - (Number(a.finalScore) || 0));
@@ -213,9 +223,9 @@ export default function GeneratePdfModal({
           student_prodi: currentStudent.prodi,
           kelompok: currentStudent.kelompok,
           mentor: mentorTwoWords,
-          nilai_akhir: currentStudent.finalScore,
-          predikat: predicateLabel,
-          status: currentStudent.status,
+          nilai_akhir: hasEvaluation ? numericFinalScore : 0,
+          predikat: emailPredicate,
+          status: evaluationStatusForEmail,
           logo_url: new URL('/assets/Logo%20HRD.png', window.location.origin).href,
           pdf_base64: pdfBase64,
           pdf_filename: pdfFilename,
