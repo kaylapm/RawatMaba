@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 // ═══════════════════════════════════════════════════════════════
 // WARNA RESMI GSM & RUBRIK PENILAIAN RAWAT MABA 2026
@@ -230,28 +231,28 @@ export const PILLARS = [
     indicators: [
       {
         key: 'p4_keaktifan_diskusi',
-        label: 'Keaktifan Diskusi/Bertanya',
+        label: 'Kemandirian & Daya Tangkap',
         bobot: 4,
-        desc: 'Tingkat keaktifan peserta bertanya dan berdiskusi selama sesi training maupun mentoring.',
+        desc: 'Kecepatan peserta dalam memahami instruksi dan inisiatif mencari solusi secara mandiri sebelum bergantung pada mentor.',
         rubrik: {
-          1: 'Pasif, tidak pernah bertanya/berpartisipasi dalam diskusi.',
-          2: 'Sangat jarang berpartisipasi dan hanya merespons saat ditunjuk langsung.',
-          3: 'Cukup aktif, sesekali bertanya atau menanggapi diskusi.',
-          4: 'Aktif bertanya dan memberikan kontribusi pendapat yang konstruktif secara teratur.',
-          5: 'Sangat aktif bertanya dan memberikan tanggapan yang relevan.'
+          1: 'Pasif, sangat lambat memahami instruksi dan bergantung penuh pada mentor.',
+          2: 'Cukup lambat menangkap instruksi dan jarang mencari solusi mandiri.',
+          3: 'Cukup tanggap memahami instruksi dan sesekali mencoba mencari solusi mandiri.',
+          4: 'Cepat memahami instruksi serta memiliki inisiatif mencari solusi sebelum bertanya.',
+          5: 'Sangat mandiri, memiliki daya tangkap luar biasa dan proaktif mencari solusi.'
         }
       },
       {
         key: 'p4_kedisiplinan',
-        label: 'Kedisiplinan & Presensi',
+        label: 'Kualitas Usaha & Dedikasi',
         bobot: 4,
-        desc: 'Ketepatan waktu kehadiran dan ketepatan waktu pengumpulan take-home assignment (CV & LinkedIn).',
+        desc: 'Keseriusan dan totalitas peserta yang terlihat dari persiapan saat mentoring maupun kualitas pengerjaan take-home assignment (CV & LinkedIn).',
         rubrik: {
-          1: 'Sering terlambat/tidak mengumpulkan tugas tepat waktu.',
-          2: 'Pernah terlambat hadir dan pengumpulan tugas melewati batas waktu tanpa izin.',
-          3: 'Cukup disiplin, sesekali terlambat namun tetap menyelesaikan tugas.',
-          4: 'Disiplin tinggi, hadir tepat waktu dan tugas dikumpulkan tepat sebelum tenggat.',
-          5: 'Selalu tepat waktu dalam kehadiran maupun pengumpulan tugas.'
+          1: 'Kurang berusaha, persiapan minim dan tugas dikerjakan asal-asalan.',
+          2: 'Usaha dan dedikasi di bawah standar yang diharapkan.',
+          3: 'Menunjukkan usaha dan dedikasi yang cukup dalam persiapan serta tugas.',
+          4: 'Menunjukkan keseriusan, dedikasi tinggi, dan kualitas tugas yang baik.',
+          5: 'Totalitas dan dedikasi luar biasa, kualitas persiapan dan tugas sangat memuaskan.'
         }
       },
       {
@@ -324,6 +325,7 @@ export default function InsertGradesModal({
   onClose, 
   students = [], 
   onSaveGrade, 
+  onClearGrade,
   initialStudentId, 
   isFullScreen = false 
 }) {
@@ -335,6 +337,7 @@ export default function InsertGradesModal({
   const [feedbackOprec, setFeedbackOprec] = useState('');
   const [openRubrikIndex, setOpenRubrikIndex] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const [scores, setScores] = useState(() => {
     const init = {};
@@ -374,6 +377,21 @@ export default function InsertGradesModal({
     if (s) loadStudentData(s);
   };
 
+  const handleResetForm = async () => {
+    const emptyScores = {};
+    PILLARS.forEach(p => p.indicators.forEach(ind => { emptyScores[ind.key] = 0; }));
+    setScores(emptyScores);
+    setNotes('');
+    setFeedbackApresiasi('');
+    setFeedbackSaran('');
+    setFeedbackOprec('');
+    setShowClearConfirm(false);
+
+    if (onClearGrade && currentStudent?.id) {
+      await onClearGrade(currentStudent.id, currentStudent.name);
+    }
+  };
+
   if (!isOpen && !isFullScreen) return null;
 
   const currentStudent = students.find(s => s.id === selectedStudentId) || students[0] || {};
@@ -393,58 +411,45 @@ export default function InsertGradesModal({
     setScores(prev => ({ ...prev, [key]: val }));
   };
 
+  const calculateTotalPillarPoints = (pillarObj) => {
+    return calcPillarScore(pillarObj, scores);
+  };
+
   const toggleRubrik = (key) => {
     setOpenRubrikIndex(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!currentStudent || !currentStudent.id) return;
-    
-    // Security check: ensure student is within authorized list
-    const isAuthorized = students.some(s => s.id === currentStudent.id);
-    if (!isAuthorized) {
-      alert('Akses tidak diizinkan untuk mahasiswa ini.');
-      return;
-    }
-
+    if (e) e.preventDefault();
     setIsSaving(true);
 
-    // Sanitize and clamp all scores strictly between 0 and 5
-    const sanitizedScores = {};
-    PILLARS.forEach(p => {
-      p.indicators.forEach(ind => {
-        const rawVal = Number(scores[ind.key] || 0);
-        sanitizedScores[ind.key] = isNaN(rawVal) ? 0 : Math.max(0, Math.min(5, Math.round(rawVal)));
-      });
-    });
+    const calculatedP1 = calcPillarScore(PILLARS[0], scores);
+    const calculatedP2 = calcPillarScore(PILLARS[1], scores);
+    const calculatedP3 = calcPillarScore(PILLARS[2], scores);
+    const calculatedP4 = calcPillarScore(PILLARS[3], scores);
 
-    const p1Score = calcPillarScore(PILLARS[0], sanitizedScores);
-    const p2Score = calcPillarScore(PILLARS[1], sanitizedScores);
-    const p3Score = calcPillarScore(PILLARS[2], sanitizedScores);
-    const p4Score = calcPillarScore(PILLARS[3], sanitizedScores);
-    const safeFinalScore = calcFinalScore(sanitizedScores);
-    const safePredInfo = getPredicate(safeFinalScore);
+    const isGraded = filledCount > 0;
+    const computedStatus = isGraded ? 'Telah Dinilai' : 'Belum Dinilai';
 
     const updatedStudentData = {
       ...currentStudent,
-      scores: sanitizedScores,
+      scores: { ...scores },
       pillarScores: {
-        p1_score: p1Score,
-        p2_score: p2Score,
-        p3_score: p3Score,
-        p4_score: p4Score
+        p1_score: calculatedP1,
+        p2_score: calculatedP2,
+        p3_score: calculatedP3,
+        p4_score: calculatedP4,
       },
-      finalScore: safeFinalScore,
-      predicate: safePredInfo.grade,
-      status: safeFinalScore >= 75 ? 'Lulus' : (safeFinalScore >= 60 ? 'Perlu Latihan' : 'Perlu Pendampingan'),
-      notes: (notes || '').slice(0, 1000).trim() || (feedbackApresiasi ? `${feedbackApresiasi} ${feedbackSaran}` : `Mahasiswa telah dievaluasi pada 4 pilar mentoring Rawat Maba.`),
-      feedback_apresiasi: feedbackApresiasi.trim(),
-      feedback_saran: feedbackSaran.trim(),
-      feedback_oprec: feedbackOprec.trim(),
-      feedbackApresiasi: feedbackApresiasi.trim(),
-      feedbackSaran: feedbackSaran.trim(),
-      feedbackOprec: feedbackOprec.trim(),
+      finalScore: finalScore,
+      predicate: predicateInfo.grade,
+      status: computedStatus,
+      notes: notes || `Telah dievaluasi oleh mentor ${currentStudent.mentor}.`,
+      feedback_apresiasi: feedbackApresiasi,
+      feedback_saran: feedbackSaran,
+      feedback_oprec: feedbackOprec,
+      feedbackApresiasi: feedbackApresiasi,
+      feedbackSaran: feedbackSaran,
+      feedbackOprec: feedbackOprec,
       lastUpdated: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
@@ -456,7 +461,7 @@ export default function InsertGradesModal({
   const renderCardContent = () => (
     <div className={`relative w-full ${isFullScreen ? 'max-w-6xl mx-auto' : 'max-w-5xl'} bg-white rounded-3xl shadow-2xl border border-gsm-lilac overflow-hidden flex flex-col ${isFullScreen ? 'mb-10' : 'max-h-[92vh]'}`}>
         
-        {/* ═══ 1. Spacious GSM Blue Gradient Header Banner with BG4.svg ═══ */}
+        {/* ═══ 1. Spacious GSM Blue Gradient Header Banner (Clean & Static) ═══ */}
         <div className="relative z-10 bg-gsm-blue-gradient text-white px-6 sm:px-8 py-6 flex flex-col justify-between overflow-hidden shadow-md flex-shrink-0">
           
           {/* BG4.svg Ambient Layer */}
@@ -464,29 +469,29 @@ export default function InsertGradesModal({
             className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-30 mix-blend-overlay pointer-events-none z-0"
           />
           
-          {/* Star Accent from Project Assets */}
+          {/* Star Accent from Project Assets - Static */}
           <img 
             src="/assets/Bintang.png" 
             alt="Star" 
-            className="absolute -right-4 -bottom-4 w-28 h-28 object-contain opacity-25 pointer-events-none animate-pulse z-0" 
+            className="absolute right-2 bottom-2 w-20 h-20 object-contain opacity-20 pointer-events-none z-0 select-none" 
           />
 
           <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-md flex-shrink-0">
+              <div className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-md flex-shrink-0 p-3">
                 <span className="material-symbols-outlined text-3xl text-gsm-cream">edit_document</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200 shadow-sm">
-                    Form Penilaian Rapot Mentoring
+                    Penilaian Mentoring
                   </span>
                 </div>
                 <h2 className="font-coolvetica font-bold text-2xl text-white mt-1 drop-shadow-sm">
-                  Evaluasi Nilai Mahasiswa Baru
+                  Evaluasi Nilai Mahasiswa
                 </h2>
                 <p className="text-xs text-blue-100/90 font-isi mt-0.5">
-                  Input skor 1–5 pada 4 Pilar Mentoring (CV & Portofolio, LinkedIn, Interview, Sikap & Partisipasi)
+                  Input skor 4 pilar dan feedback perkembangan peserta mentoring.
                 </p>
               </div>
             </div>
@@ -502,8 +507,10 @@ export default function InsertGradesModal({
             </button>
           </div>
 
-          {/* Student Selector Card inside Header */}
+          {/* Student Selector & Live Stats Row inside Header */}
           <div className="relative z-10 mt-5 pt-4 border-t border-white/20 flex flex-wrap items-center justify-between gap-4">
+            
+            {/* Left: Student Selector */}
             <div className="flex items-center gap-3 flex-1 min-w-[280px]">
               <span className="text-xs font-bold text-gsm-cream font-sans-code uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-gsm-cream text-base">person</span>
@@ -512,7 +519,7 @@ export default function InsertGradesModal({
               <select
                 value={selectedStudentId}
                 onChange={(e) => handleStudentChange(e.target.value)}
-                className="w-full max-w-lg bg-white/95 text-slate-900 border border-white/40 rounded-xl px-4 py-2.5 text-xs font-bold font-isi outline-none focus:ring-2 focus:ring-gsm-cream shadow-sm"
+                className="w-full max-w-lg bg-white/95 text-slate-900 border border-white/40 rounded-xl px-4 py-2 text-xs font-bold font-isi outline-none focus:ring-2 focus:ring-gsm-cream shadow-sm cursor-pointer"
               >
                 {students.map(s => (
                   <option key={s.id} value={s.id} className="text-slate-900">
@@ -522,16 +529,16 @@ export default function InsertGradesModal({
               </select>
             </div>
 
-            {/* Progress & Live Score Pill */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="bg-white/15 border border-white/25 px-4 py-2 rounded-2xl flex items-center gap-3 backdrop-blur-md">
-                <div className="w-24 h-2 bg-white/30 rounded-full overflow-hidden">
+            {/* Right: Progress & Live Score Pill (Solid White Background for Clarity) */}
+            <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+              <div className="bg-white text-slate-800 border border-white/60 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-md">
+                <div className="w-20 sm:w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gsm-cream rounded-full transition-all duration-500"
+                    className="h-full bg-gsm-blue-main rounded-full transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
-                <span className="text-[11px] font-sans-code font-bold text-gsm-cream whitespace-nowrap">
+                <span className="text-[11px] font-sans-code font-bold text-slate-800 whitespace-nowrap">
                   {filledCount}/{totalIndicators} ({progressPercentage}%)
                 </span>
               </div>
@@ -544,6 +551,63 @@ export default function InsertGradesModal({
                 </span>
               </div>
             </div>
+
+          </div>
+
+          {/* Action Buttons Row directly in Header Banner (Uniform Solid White Buttons with GSM Accents) */}
+          <div className="relative z-10 mt-4 pt-3 border-t border-white/20 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-white hover:bg-slate-100 text-slate-700 border border-white/80 shadow-sm font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 font-reddit"
+              >
+                <span className="material-symbols-outlined text-base text-slate-500">arrow_back</span>
+                <span>Batal</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(true)}
+                className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 shadow-sm font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 font-reddit"
+                title="Kosongkan nilai mahasiswa ini"
+              >
+                <span className="material-symbols-outlined text-base text-rose-500">delete_sweep</span>
+                <span>Reset / Hapus Nilai</span>
+              </button>
+
+              {!isSummaryView ? (
+                <button
+                  type="button"
+                  onClick={() => setActivePillarTab(4)}
+                  className="bg-white hover:bg-blue-50 text-gsm-blue-main border border-white/80 shadow-sm font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 font-reddit"
+                >
+                  <span className="material-symbols-outlined text-base text-gsm-blue-main">fact_check</span>
+                  <span>Lihat Ringkasan Rapot</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActivePillarTab(0)}
+                  className="bg-white hover:bg-blue-50 text-gsm-blue-main border border-white/80 shadow-sm font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 font-reddit"
+                >
+                  <span className="material-symbols-outlined text-base text-gsm-blue-main">edit</span>
+                  <span>Kembali Edit Skor</span>
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="bg-gsm-cream hover:bg-yellow-300 text-slate-950 font-bold text-xs px-6 py-2 rounded-xl transition-all shadow-md flex items-center gap-2 font-reddit border border-yellow-200 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base">
+                {isSaving ? 'hourglass_empty' : 'save'}
+              </span>
+              <span>{isSaving ? 'Menyimpan...' : 'Simpan Nilai Rapot'}</span>
+            </button>
           </div>
 
         </div>
@@ -561,46 +625,42 @@ export default function InsertGradesModal({
                 key={p.id}
                 type="button"
                 onClick={() => setActivePillarTab(idx)}
-                className={`pb-3 px-4 rounded-t-2xl text-xs font-bold font-isi transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
-                  isActive 
-                    ? 'border-[#003CEC] text-[#003CEC] bg-blue-50/60 shadow-sm' 
-                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                className={`pb-3 px-4 text-xs font-bold font-isi transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                  isActive
+                    ? 'border-gsm-blue-main text-gsm-blue-main'
+                    : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
               >
-                <span 
-                  className="w-5 h-5 rounded-full text-[10px] font-sans-code font-bold flex items-center justify-center text-white"
-                  style={{ backgroundColor: pIsDone ? '#003CEC' : p.color }}
+                <div 
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] text-white font-sans-code"
+                  style={{ backgroundColor: p.color }}
                 >
-                  {pIsDone ? '✓' : idx + 1}
-                </span>
-                <span>{p.code}. {p.shortTitle}</span>
-                <span className="text-[10px] font-sans-code text-slate-400 font-normal">
-                  ({pScore}/{p.bobot} pt)
+                  {pIsDone ? '✓' : p.code}
+                </div>
+                <span>{p.title}</span>
+                <span className="text-[10px] font-sans-code font-normal text-slate-400">
+                  ({pScore.toFixed(1)}/{p.bobot} pt)
                 </span>
               </button>
             );
           })}
 
-          {/* Summary Tab */}
           <button
             type="button"
             onClick={() => setActivePillarTab(4)}
-            className={`pb-3 px-4 rounded-t-2xl text-xs font-bold font-isi transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
-              isSummaryView 
-                ? 'border-[#003CEC] text-[#003CEC] bg-blue-50/60 shadow-sm' 
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            className={`pb-3 px-4 text-xs font-bold font-isi transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+              activePillarTab === 4
+                ? 'border-gsm-blue-main text-gsm-blue-main'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
             <span className="material-symbols-outlined text-base">fact_check</span>
-            <span>Ringkasan Rapot</span>
-            <span className="bg-gsm-cream text-slate-950 text-[10px] font-sans-code font-bold px-2 py-0.5 rounded-full border border-yellow-200">
-              Total {finalScore}
-            </span>
+            <span>Ringkasan Rapot & Feedback</span>
           </button>
         </div>
 
         {/* ═══ 3. Body: Indicators / Summary Content ═══ */}
-        <div className="relative z-10 flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/60">
+        <div className="relative z-10 flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/60 custom-scrollbar">
           
           {/* A. VIEW PER PILAR (0, 1, 2, 3) */}
           {!isSummaryView && (
@@ -1067,53 +1127,70 @@ export default function InsertGradesModal({
 
         </div>
 
-        {/* ═══ 4. Modal Footer ═══ */}
-        <div className="relative z-10 bg-white border-t border-gsm-lilac px-6 py-4 flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition-all"
-            >
-              Batal
-            </button>
-            {!isSummaryView && (
-              <button
-                type="button"
-                onClick={() => setActivePillarTab(4)}
-                className="px-5 py-2.5 rounded-2xl border border-gsm-lilac text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span className="material-symbols-outlined text-base text-gsm-blue-main">fact_check</span>
-                <span>Lihat Ringkasan Rapot</span>
-              </button>
-            )}
-          </div>
+        {/* ═══ Confirm Reset / Clear Grade Modal (GSM Authenticated Alert Dialog via Portal) ═══ */}
+        {showClearConfirm && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gsm-lilac overflow-hidden space-y-0 animate-in zoom-in-95 duration-200">
+              
+              {/* Header Banner with GSM Gradient */}
+              <div className="relative bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8] p-5 text-white overflow-hidden flex items-center justify-between">
+                <img 
+                  src="/assets/Bintang.png" 
+                  alt="GSM Star" 
+                  className="absolute right-2 bottom-1 w-16 h-16 opacity-20 pointer-events-none select-none"
+                />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-sm flex-shrink-0">
+                    <span className="material-symbols-outlined text-xl text-gsm-cream">delete_sweep</span>
+                  </div>
+                  <div>
+                    <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-yellow-200">
+                      Konfirmasi Tindakan
+                    </span>
+                    <h3 className="font-coolvetica font-bold text-base text-white mt-1 drop-shadow-sm">
+                      Kosongkan Nilai Mahasiswa?
+                    </h3>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-3">
-            {isSummaryView && (
-              <button
-                type="button"
-                onClick={() => setActivePillarTab(0)}
-                className="px-5 py-2.5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 transition-all"
-              >
-                <span className="material-symbols-outlined text-base">edit</span>
-                <span>Kembali Edit Skor</span>
-              </button>
-            )}
+              {/* Modal Body (Clean Minimalist White) */}
+              <div className="p-6 sm:p-7 space-y-5 text-slate-700 bg-white font-isi">
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500 font-isi leading-relaxed">
+                    Apakah Anda yakin ingin mengosongkan seluruh skor rapot untuk:
+                  </p>
+                  <h4 className="font-coolvetica font-bold text-xl text-slate-900 leading-tight">
+                    {currentStudent.name} <span className="text-xs text-slate-400 font-sans-code font-normal">({currentStudent.nim})</span>
+                  </h4>
+                  <p className="text-xs text-rose-600 font-medium font-isi pt-1 leading-relaxed">
+                    Semua skor 17 indikator dan feedback mentor akan direset ke status <strong>Belum Dinilai (0 Poin)</strong>.
+                  </p>
+                </div>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="px-7 py-2.5 rounded-2xl bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-gsm-blue-main/25 hover:shadow-gsm-blue-main/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-base">
-                {isSaving ? 'hourglass_empty' : 'save'}
-              </span>
-              <span>{isSaving ? 'Menyimpan Nilai...' : 'Simpan Nilai Rapot'}</span>
-            </button>
-          </div>
-        </div>
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(false)}
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all font-reddit"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-1.5 font-reddit"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                    <span>Ya, Kosongkan Nilai</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>,
+          document.body
+        )}
 
       </div>
   );

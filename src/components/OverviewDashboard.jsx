@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getMentorLastLogin } from '../lib/dataService';
 import { PILLARS, calcPillarScore } from './InsertGradesModal';
 
@@ -37,7 +38,52 @@ export default function OverviewDashboard({
   const [newNoticeTitle, setNewNoticeTitle] = useState('');
   const [newNoticeDesc, setNewNoticeDesc] = useState('');
   const [newNoticeCategory, setNewNoticeCategory] = useState('Info');
-  const [newNoticeDeadline, setNewNoticeDeadline] = useState('');
+  const [noticeDate, setNoticeDate] = useState('');
+  const [noticeTime, setNoticeTime] = useState('23:59');
+
+  const formatDeadlineString = (dateStr, timeStr) => {
+    if (!dateStr) return '';
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const dayName = days[dateObj.getDay()];
+      const dateNum = dateObj.getDate();
+      const monthName = months[dateObj.getMonth()];
+      const year = dateObj.getFullYear();
+      const time = timeStr ? `${timeStr} WIB` : '23:59 WIB';
+      return `${dayName}, ${dateNum} ${monthName} ${year} • ${time}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const handleNoticeSubmit = (e) => {
+    e.preventDefault();
+    if (!newNoticeTitle.trim() || !newNoticeDesc.trim()) return;
+
+    const finalDeadline = noticeDate ? formatDeadlineString(noticeDate, noticeTime) : '';
+
+    if (onAddNotice) {
+      onAddNotice({
+        title: newNoticeTitle.trim(),
+        description: newNoticeDesc.trim(),
+        category: newNoticeCategory,
+        deadline: finalDeadline || null,
+        date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+        author: currentUser?.name || 'Panitia Rawat Maba'
+      });
+    }
+
+    // Reset Form
+    setNewNoticeTitle('');
+    setNewNoticeDesc('');
+    setNewNoticeCategory('Info');
+    setNoticeDate('');
+    setNoticeTime('23:59');
+    setIsAddNoticeOpen(false);
+  };
 
   // ═══════════════════════════════════════════════════════════════
   // SCROLL REVEAL OBSERVERS FOR SECTIONS
@@ -148,37 +194,17 @@ export default function OverviewDashboard({
     });
   }, [gradedStudents]);
 
-  const handleNoticeSubmit = (e) => {
-    e.preventDefault();
-    if (!newNoticeTitle.trim() || !newNoticeDesc.trim()) return;
 
-    if (onAddNotice) {
-      onAddNotice({
-        title: newNoticeTitle.trim(),
-        description: newNoticeDesc.trim(),
-        category: newNoticeCategory,
-        deadline: newNoticeDeadline.trim() || null,
-        author: currentUser?.name || 'Panitia Rawat Maba',
-        date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-      });
-    }
-
-    setNewNoticeTitle('');
-    setNewNoticeDesc('');
-    setNewNoticeCategory('Info');
-    setNewNoticeDeadline('');
-    setIsAddNoticeOpen(false);
-  };
 
   return (
     <div className="space-y-8 font-isi relative z-10 w-full">
       
-      {/* ═══ 1. Uniform Academic Header Banner matching Kriteria & Rubrik ═══ */}
-      <div className="relative bg-white p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-6 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+      {/* ═══ 1. Academic Header Banner ═══ */}
+      <div className="relative bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-6 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
         
         {/* Watermark BG4.svg */}
         <div 
-          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.06] pointer-events-none z-0"
+          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.05] pointer-events-none z-0"
         />
 
         <div className="relative z-10 flex items-center gap-4">
@@ -188,17 +214,17 @@ export default function OverviewDashboard({
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200">
-                Dashboard Rekapitulasi
+                Dashboard Rekap
               </span>
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen HRD</span>
             </div>
-            <h1 className="font-coolvetica font-bold text-2xl text-slate-900 mt-1">
-              Rekapitulasi & Statistik Penilaian Rapot
+            <h1 className="font-coolvetica font-semibold text-xl sm:text-2xl text-slate-900 mt-2 leading-[1.5] tracking-[-0.025em]">
+              Dashboard Rekapitulasi Nilai
             </h1>
-            <p className="text-xs text-slate-500 font-isi mt-0.5">
+            <p className="text-sm text-slate-500 font-isi mt-1.5 leading-6">
               {isMentor 
-                ? `Monitoring capaian 4 pilar evaluasi kelompok: ${mentorGroupName} (${totalStudents} Maba)` 
-                : `Monitoring capaian 4 pilar evaluasi, status pengisian nilai per mentor, dan sebaran data mahasiswa.`}
+                ? `Monitoring progres nilai 4 pilar kelompok ${mentorGroupName} (${totalStudents} Maba).` 
+                : `Ringkasan progres penilaian 4 pilar dan performa mahasiswa per kelompok.`}
             </p>
           </div>
         </div>
@@ -666,10 +692,10 @@ export default function OverviewDashboard({
 
       </div>
 
-      {/* ═══ Super Admin Add Notice Modal ═══ */}
-      {isAddNoticeOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-gsm-lilac overflow-hidden p-6 sm:p-7 space-y-5">
+      {/* ═══ Super Admin Add Notice Modal (Portal to Body for True Fullscreen Overlay) ═══ */}
+      {isAddNoticeOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden p-6 sm:p-7 space-y-5">
             
             {/* Header Modal */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -690,7 +716,7 @@ export default function OverviewDashboard({
               <button
                 type="button"
                 onClick={() => setIsAddNoticeOpen(false)}
-                className="text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full"
+                className="text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition-colors"
               >
                 <span className="material-symbols-outlined text-base leading-none">close</span>
               </button>
@@ -712,7 +738,7 @@ export default function OverviewDashboard({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1 font-sans-code uppercase text-[10px]">
                     Kategori Pengumuman:
@@ -729,17 +755,92 @@ export default function OverviewDashboard({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 font-sans-code uppercase text-[10px]">
-                    Batas Waktu (Opsional):
-                  </label>
-                  <input 
-                    type="text"
-                    value={newNoticeDeadline}
-                    onChange={(e) => setNewNoticeDeadline(e.target.value)}
-                    placeholder="Misal: Jumat, 23:59 WIB"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-gsm-blue-main focus:bg-white text-slate-800"
-                  />
+                {/* Interactive Date & Time Picker */}
+                <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="font-bold text-slate-700 font-sans-code uppercase text-[10px] flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-gsm-blue-main">event</span>
+                      <span>Pilih Tanggal & Jam Batas Waktu (Opsional):</span>
+                    </label>
+                    {noticeDate && (
+                      <span className="text-[10px] text-gsm-blue-main font-bold font-sans-code bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        {formatDeadlineString(noticeDate, noticeTime)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Tanggal:</span>
+                      <input 
+                        type="date"
+                        value={noticeDate}
+                        onChange={(e) => setNoticeDate(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Jam (WIB):</span>
+                      <input 
+                        type="time"
+                        value={noticeTime}
+                        onChange={(e) => setNoticeTime(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Shortcut Buttons */}
+                  <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                    <span className="text-[10px] font-semibold text-slate-400 font-sans-code">Pilihan cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setNoticeDate(today);
+                        setNoticeTime('23:59');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                    >
+                      Hari Ini (23:59)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                        setNoticeDate(tomorrow);
+                        setNoticeTime('23:59');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                    >
+                      Besok (23:59)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const daysToSat = (6 - now.getDay() + 7) % 7 || 7;
+                        const sat = new Date(now.getTime() + daysToSat * 86400000).toISOString().split('T')[0];
+                        setNoticeDate(sat);
+                        setNoticeTime('23:59');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                    >
+                      Sabtu ini (23:59)
+                    </button>
+                    {noticeDate && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoticeDate('');
+                          setNoticeTime('23:59');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[10px] font-bold text-rose-600 border border-rose-200 transition-all shadow-xs"
+                      >
+                        ✕ Hapus Deadline
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -761,13 +862,13 @@ export default function OverviewDashboard({
                 <button
                   type="button"
                   onClick={() => setIsAddNoticeOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-gsm-blue-main/20"
+                  className="px-5 py-2 rounded-xl bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-gsm-blue-main/20 transition-all"
                 >
                   <span className="material-symbols-outlined text-base">send</span>
                   <span>Publikasikan Pengumuman</span>
@@ -776,7 +877,8 @@ export default function OverviewDashboard({
             </form>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

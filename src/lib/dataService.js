@@ -422,3 +422,76 @@ export async function updateStudentEmailInSupabase(studentId, newEmail) {
     return { success: false, error: err };
   }
 }
+
+// Clear/reset all evaluation scores for a student back to zero
+export async function clearStudentGradeInSupabase(studentId) {
+  try {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(studentId);
+    
+    let dbStudentId = studentId;
+
+    if (!isUuid) {
+      const { data: stdData } = await supabase
+        .from('students')
+        .select('id')
+        .eq('nrp', String(studentId).trim())
+        .maybeSingle();
+
+      if (stdData && stdData.id) {
+        dbStudentId = stdData.id;
+      } else {
+        console.warn("Could not resolve Supabase student UUID for clearing:", studentId);
+        return { success: false, error: "Student UUID not found" };
+      }
+    }
+
+    const resetData = {
+      student_id: dbStudentId,
+      p1_struktur_cv: 0,
+      p1_kelengkapan_info: 0,
+      p1_relevansi_divisi: 0,
+      p1_kualitas_penulisan: 0,
+      p1_kesesuaian_jenis_cv: 0,
+      p2_kelengkapan_profil: 0,
+      p2_personal_branding: 0,
+      p2_konsistensi_cv: 0,
+      p3_struktur_jawaban_star: 0,
+      p3_komunikasi_bahasa_tubuh: 0,
+      p3_kepercayaan_diri: 0,
+      p3_relevansi_jawaban: 0,
+      p3_pertanyaan_sulit: 0,
+      p4_keaktifan_diskusi: 0,
+      p4_kedisiplinan: 0,
+      p4_kolaborasi_kelompok: 0,
+      p4_keterbukaan_feedback: 0,
+      p1_score: 0,
+      p2_score: 0,
+      p3_score: 0,
+      p4_score: 0,
+      final_score: 0,
+      predicate: '-',
+      status: 'Belum Dinilai',
+      notes: '',
+      feedback_apresiasi: '',
+      feedback_saran: '',
+      feedback_oprec: '',
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('rapot_evaluations')
+      .upsert(resetData, { onConflict: 'student_id' });
+
+    if (error) {
+      console.error('Supabase evaluation clear error:', error);
+      return { success: false, error };
+    }
+
+    console.log('Successfully cleared evaluation for student ID:', dbStudentId);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error clearing evaluation in Supabase:', err);
+    return { success: false, error: err };
+  }
+}
+

@@ -13,6 +13,7 @@ export default function GeneratePdfModal({
 }) {
   const [selectedStudentId, setSelectedStudentId] = useState(student?.id || students?.[0]?.id);
   const [currentPageIndex, setCurrentPageIndex] = useState(1); // 1..6
+  const [previewScale, setPreviewScale] = useState(0.65); // Default fit screen zoom
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null); // 'sent' | 'error' | null
@@ -108,8 +109,6 @@ export default function GeneratePdfModal({
     if (pageElements.length === 0) throw new Error('Halaman rapot tidak ditemukan');
 
     // html2canvas must capture the final font metrics and decoded image pixels.
-    // A fixed timeout is unreliable on slower devices and is the main cause of
-    // text baselines being cropped or shifted in the downloaded PDF.
     if (document.fonts?.ready) {
       await document.fonts.ready;
     }
@@ -127,14 +126,11 @@ export default function GeneratePdfModal({
         throw new Error(`Gambar gagal dimuat: ${image.alt || image.src}`);
       }
 
-      // decode() waits until the browser can paint the image, not only until
-      // the network request has completed.
       if (image.decode) {
         try {
           await image.decode();
         } catch {
-          // A fully loaded image can reject decode() in some Chromium builds;
-          // naturalWidth above is the reliable fallback in that case.
+          // Fallback handled by naturalWidth
         }
       }
     }));
@@ -156,9 +152,9 @@ export default function GeneratePdfModal({
         pdf.addPage('a4', 'portrait');
       }
 
-      // html-to-image renders via an SVG <foreignObject>, so the browser's own
-      // layout/paint engine draws the page (unlike html2canvas, which reimplements
-      // layout itself and was found to mis-center small flex badges in the PDF).
+      // Yield to the browser render loop between page snapshots to keep CSS spinning animation alive
+      await new Promise(resolve => setTimeout(resolve, 30));
+
       const canvas = await htmlToImage.toCanvas(pageEl, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
@@ -177,6 +173,9 @@ export default function GeneratePdfModal({
 
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
+    // Yield to let React re-render and paint the spinning spinner icon first
+    await new Promise(resolve => setTimeout(resolve, 60));
+
     const filename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
     try {
       const pdf = await generateMultiPagePdf();
@@ -211,11 +210,13 @@ export default function GeneratePdfModal({
     const pdfFilename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
 
     try {
+      // Generate full crisp resolution PDF
       const pdf = await generateMultiPagePdf();
       const pdfDataUrl = pdf.output('datauristring');
       const pdfBase64 = pdfDataUrl.split(',')[1];
 
-      const { data, error } = await supabase.functions.invoke('send-rapot-email', {
+      // 2. Invoke Supabase Edge Function with a 25s timeout safeguard
+      const invokePromise = supabase.functions.invoke('send-rapot-email', {
         body: {
           to_email: recipientEmail,
           to_name: currentStudent.name,
@@ -231,6 +232,12 @@ export default function GeneratePdfModal({
           pdf_filename: pdfFilename,
         },
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Koneksi timeout (1 menit). Pastikan Edge Function "send-rapot-email" sudah di-deploy dan kredensial Gmail terpasang di Supabase Secrets.')), 60000)
+      );
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
 
       if (error) {
         let errorDetail = error.message;
@@ -259,8 +266,12 @@ export default function GeneratePdfModal({
       setTimeout(() => setEmailStatus(null), 6000);
     } catch (err) {
       console.error('Email error:', err);
-      setLastErrorMessage(prev => prev || err.message || 'Gagal mengirim email.');
+      const errMsg = err.message || 'Gagal mengirim email.';
+      setLastErrorMessage(errMsg);
       setEmailStatus('error');
+      if (showToast) {
+        showToast(`Gagal kirim email: ${errMsg}`);
+      }
       setTimeout(() => setEmailStatus(null), 10000);
     } finally {
       setIsSendingEmail(false);
@@ -275,11 +286,12 @@ export default function GeneratePdfModal({
       className={`relative w-full bg-white overflow-hidden ${
         isPrint
           ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
-          : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
+          : 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 rounded-2xl border border-slate-300 shadow-2xl overflow-hidden'
       }`}
       style={{
         boxSizing: 'border-box',
-        ...(isPrint ? { width: '794px', height: '1123px' } : {})
+        width: '794px',
+        height: '1123px'
       }}
     >
       {/* Background Vector Template from /assets/Rapot/1 - COVER.svg */}
@@ -448,11 +460,12 @@ export default function GeneratePdfModal({
       className={`relative w-full bg-white overflow-hidden ${
         isPrint
           ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
-          : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
+          : 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 rounded-2xl border border-slate-300 shadow-2xl overflow-hidden'
       }`}
       style={{
         boxSizing: 'border-box',
-        ...(isPrint ? { width: '794px', height: '1123px' } : {})
+        width: '794px',
+        height: '1123px'
       }}
     >
       <img
@@ -472,11 +485,12 @@ export default function GeneratePdfModal({
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
           ? 'pdf-export-page pdf-score-sheet-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
-          : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
+          : 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 rounded-2xl border border-slate-300 shadow-2xl overflow-hidden'
       }`}
       style={{
         boxSizing: 'border-box',
-        ...(isPrint ? { width: '794px', height: '1123px' } : {})
+        width: '794px',
+        height: '1123px'
       }}
     >
       {/* 1. Official Page 4 Background Template */}
@@ -834,11 +848,12 @@ export default function GeneratePdfModal({
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
           ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
-          : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
+          : 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 rounded-2xl border border-slate-300 shadow-2xl overflow-hidden'
       }`}
       style={{
         boxSizing: 'border-box',
-        ...(isPrint ? { width: '794px', height: '1123px' } : {})
+        width: '794px',
+        height: '1123px'
       }}
     >
       {/* 1. Official Page 5 Template Background */}
@@ -895,11 +910,12 @@ export default function GeneratePdfModal({
       className={`relative w-full bg-white overflow-hidden text-slate-900 ${
         isPrint
           ? 'pdf-export-page w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 shadow-none'
-          : 'aspect-[1/1.414] max-w-[760px] w-full mx-auto rounded-3xl border border-slate-300 shadow-2xl'
+          : 'w-[794px] h-[1123px] max-w-[794px] max-h-[1123px] min-w-[794px] min-h-[1123px] m-0 p-0 rounded-2xl border border-slate-300 shadow-2xl overflow-hidden'
       }`}
       style={{
         boxSizing: 'border-box',
-        ...(isPrint ? { width: '794px', height: '1123px' } : {})
+        width: '794px',
+        height: '1123px'
       }}
     >
       {/* 1. Official Page 6 Closing Background */}
@@ -943,12 +959,12 @@ export default function GeneratePdfModal({
   );
 
   const PAGES = [
-    { num: 1, id: 'cover', title: 'Halaman 1 dari 6 — Cover Rapot Mentoring Rawat Maba', short: 'Cover' },
-    { num: 2, id: 'kahima', title: 'Halaman 2 dari 6 — Pesan dari Ketua Himpunan (KAHIMA)', short: 'Pesan KAHIMA' },
-    { num: 3, id: 'hrd', title: 'Halaman 3 dari 6 — Pesan dari Kawadep HRD & PIC', short: 'Pesan HRD & PIC' },
-    { num: 4, id: 'scores', title: 'Halaman 4 dari 6 — Lembar Nilai 4 Pilar Mahasiswa', short: 'Lembar Nilai' },
-    { num: 5, id: 'feedback', title: 'Halaman 5 dari 6 — Feedback Khusus Mentor', short: 'Feedback Mentor' },
-    { num: 6, id: 'closing', title: 'Halaman 6 dari 6 — Closing & Rekapitulasi Prestasi', short: 'Closing' }
+    { num: 1, id: 'cover', title: 'Halaman 1/6 — Cover Rapot', short: 'Cover' },
+    { num: 2, id: 'kahima', title: 'Halaman 2/6 — Pesan KAHIMA', short: 'Pesan KAHIMA' },
+    { num: 3, id: 'hrd', title: 'Halaman 3/6 — Pesan HRD & PIC', short: 'Pesan HRD & PIC' },
+    { num: 4, id: 'scores', title: 'Halaman 4/6 — Lembar Nilai 4 Pilar', short: 'Lembar Nilai' },
+    { num: 5, id: 'feedback', title: 'Halaman 5/6 — Feedback Mentor', short: 'Feedback Mentor' },
+    { num: 6, id: 'closing', title: 'Halaman 6/6 — Penutup & Rekap', short: 'Penutup' }
   ];
 
   const renderActivePreviewPage = () => {
@@ -973,34 +989,34 @@ export default function GeneratePdfModal({
   return (
     <div className="w-full space-y-5 animate-in fade-in duration-300 font-isi pb-12">
       
-      {/* ═══ 1. Vibrant GSM Hero Banner (Identical to Input Nilai) ═══ */}
-      <div className="relative bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8] p-6 sm:p-8 rounded-3xl text-white shadow-xl overflow-hidden flex-shrink-0">
+      {/* ═══ 1. Vibrant GSM Hero Banner (Clean & Static) ═══ */}
+      <div className="relative bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8] p-6 sm:p-7 rounded-3xl text-white shadow-xl overflow-hidden flex-shrink-0">
         
-        {/* Background Decorative Elements */}
+        {/* Background Decorative Elements - Static */}
         <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="absolute -left-12 -bottom-12 w-64 h-64 rounded-full bg-[#002DB3]/40 blur-2xl pointer-events-none" />
         <img 
           src="/assets/Bintang.png" 
           alt="Bintang GSM" 
-          className="absolute -right-4 -bottom-4 w-28 h-28 object-contain opacity-25 pointer-events-none animate-pulse z-0" 
+          className="absolute right-2 bottom-2 w-20 h-20 object-contain opacity-20 pointer-events-none z-0 select-none" 
         />
 
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-md flex-shrink-0">
+            <div className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-md flex-shrink-0 p-3">
               <span className="material-symbols-outlined text-3xl text-gsm-cream">picture_as_pdf</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200 shadow-sm">
-                  Dokumen Rapot Mentoring
+                  Dokumen Rapot
                 </span>
               </div>
               <h2 className="font-coolvetica font-bold text-2xl text-white mt-1 drop-shadow-sm">
-                Generate & Cetak Rapot Resmi
+                Cetak Rapot Mentoring
               </h2>
               <p className="text-xs text-blue-100/90 font-isi mt-0.5">
-                Preview Dokumen A4 Lengkap 6 Halaman: Cover, Pesan KAHIMA, Pesan Kawadep & PIC, Lembar Nilai, Feedback Mentor, dan Closing
+                Pratinjau dan unduh dokumen rapot evaluasi peserta mentoring.
               </p>
             </div>
           </div>
@@ -1030,7 +1046,7 @@ export default function GeneratePdfModal({
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full max-w-lg bg-white/95 text-slate-900 border border-white/40 rounded-xl px-4 py-2.5 text-xs font-bold font-isi outline-none focus:ring-2 focus:ring-gsm-cream shadow-sm cursor-pointer"
+              className="w-full max-w-lg bg-white/95 text-slate-900 border border-white/40 rounded-xl px-4 py-2 text-xs font-bold font-isi outline-none focus:ring-2 focus:ring-gsm-cream shadow-sm cursor-pointer"
             >
               {students.map(s => (
                 <option key={s.id} value={s.id} className="text-slate-900">
@@ -1040,19 +1056,19 @@ export default function GeneratePdfModal({
             </select>
           </div>
 
-          {/* Right: Meta Chips & Score Badge */}
+          {/* Right: Meta Chips & Score Badge (Solid White Background for Maximum Legibility) */}
           <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <div className="bg-white/15 border border-white/25 px-4 py-2 rounded-2xl flex items-center gap-3 backdrop-blur-md">
-              <span className="text-[11px] font-isi text-white/90">
-                Email: <strong className="font-sans-code text-gsm-cream font-bold">{currentStudent.email || '-'}</strong>
+            <div className="bg-white text-slate-800 border border-white/60 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-md">
+              <span className="text-[11px] font-isi text-slate-600">
+                Email: <strong className="font-sans-code text-gsm-blue-main font-bold">{currentStudent.email || '-'}</strong>
               </span>
-              <span className="text-white/40">•</span>
-              <span className="text-[11px] font-isi text-white/90">
-                Rata-rata: <strong className="font-sans-code text-yellow-300 font-bold">{groupAvgScore}</strong>
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] font-isi text-slate-600">
+                Rata-rata: <strong className="font-sans-code text-[#0082A0] font-bold">{groupAvgScore}</strong>
               </span>
-              <span className="text-white/40">•</span>
-              <span className="text-[11px] font-isi text-white/90">
-                Peringkat: <strong className="font-sans-code text-emerald-300 font-bold">#{overallRank}</strong>
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] font-isi text-slate-600">
+                Peringkat: <strong className="font-sans-code text-emerald-600 font-bold">#{overallRank}</strong>
               </span>
             </div>
 
@@ -1069,16 +1085,12 @@ export default function GeneratePdfModal({
 
       </div>
 
-      {/* ═══ 2. Navigation & Action Bar ═══ */}
-      <div className="bg-white rounded-2xl p-3 shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-3">
+      {/* ═══ 2. Navigation, Zoom Controls & Action Bar ═══ */}
+      <div className="glass-panel rounded-2xl p-3 shadow-gsm-card flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Minimalist Page Switcher ([<] 1 2 3 4 5 6 [>]) */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold font-sans-code text-slate-400 uppercase tracking-wider ml-1 hidden sm:inline">
-            Halaman:
-          </span>
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 shadow-inner">
-            {/* Previous Arrow */}
             <button
               type="button"
               onClick={() => setCurrentPageIndex(prev => Math.max(1, prev - 1))}
@@ -1089,7 +1101,6 @@ export default function GeneratePdfModal({
               <span className="material-symbols-outlined text-lg">chevron_left</span>
             </button>
 
-            {/* Numbers 1 2 3 4 5 6 */}
             {[1, 2, 3, 4, 5, 6].map((num) => {
               const isActive = currentPageIndex === num;
               return (
@@ -1099,7 +1110,7 @@ export default function GeneratePdfModal({
                   onClick={() => setCurrentPageIndex(num)}
                   className={`w-8 h-8 rounded-xl text-xs font-bold font-sans-code transition-all flex items-center justify-center ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#003CEC] to-[#00B0D8] text-white shadow-md shadow-blue-600/30 font-extrabold'
+                      ? 'bg-gsm-blue-main text-white shadow-md shadow-blue-600/30 font-extrabold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
                   }`}
                   title={`Halaman ${num}`}
@@ -1109,7 +1120,6 @@ export default function GeneratePdfModal({
               );
             })}
 
-            {/* Next Arrow */}
             <button
               type="button"
               onClick={() => setCurrentPageIndex(prev => Math.min(6, prev + 1))}
@@ -1120,6 +1130,52 @@ export default function GeneratePdfModal({
               <span className="material-symbols-outlined text-lg">chevron_right</span>
             </button>
           </div>
+
+          {/* Zoom / Scale Controls for Preview */}
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 shadow-inner">
+            <span className="text-[11px] font-bold font-sans-code text-slate-500 px-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm text-slate-400">zoom_in</span>
+              <span className="hidden md:inline">Zoom:</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setPreviewScale(prev => Math.max(0.4, Number((prev - 0.1).toFixed(2))))}
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-700 hover:bg-white transition-all font-bold"
+              title="Perkecil Preview"
+            >
+              <span className="material-symbols-outlined text-base">remove</span>
+            </button>
+            
+            {[
+              { label: 'Fit Layar', val: 0.65, title: 'Fit Layar (Tanpa Scroll)' },
+              { label: '50%', val: 0.50, title: 'Kompak 50%' },
+              { label: '75%', val: 0.75, title: 'Sedang 75%' },
+              { label: '100%', val: 1.0, title: 'Penuh 100%' }
+            ].map((z) => (
+              <button
+                key={z.label}
+                type="button"
+                onClick={() => setPreviewScale(z.val)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold font-sans-code transition-all ${
+                  Math.abs(previewScale - z.val) < 0.04
+                    ? 'bg-gsm-blue-main text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title={z.title}
+              >
+                {z.label}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setPreviewScale(prev => Math.min(1.2, Number((prev + 0.1).toFixed(2))))}
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-700 hover:bg-white transition-all font-bold"
+              title="Perbesar Preview"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+            </button>
+          </div>
         </div>
 
         {/* Right: Actions */}
@@ -1127,7 +1183,7 @@ export default function GeneratePdfModal({
           {onNavigateToInsert && (
             <button
               onClick={() => onNavigateToInsert(currentStudent)}
-              className="bg-gsm-linear-exact hover:opacity-90 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-2xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit"
+              className="bg-gsm-blue-main hover:bg-blue-700 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit"
             >
               <span className="material-symbols-outlined text-base">edit_note</span>
               <span>Input Nilai</span>
@@ -1137,9 +1193,9 @@ export default function GeneratePdfModal({
           <button
             onClick={handleDownloadPdf}
             disabled={isGenerating}
-            className="bg-gsm-linear-exact hover:opacity-90 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-2xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit"
+            className="bg-gsm-blue-main hover:bg-blue-700 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit disabled:opacity-80 disabled:cursor-wait"
           >
-            <span className="material-symbols-outlined text-base">
+            <span className={`material-symbols-outlined text-base inline-block ${isGenerating ? 'animate-spin' : ''}`}>
               {isGenerating ? 'progress_activity' : 'download'}
             </span>
             <span>{isGenerating ? 'Mengunduh...' : 'Download PDF (6 Hlm)'}</span>
@@ -1148,7 +1204,7 @@ export default function GeneratePdfModal({
           <button
             onClick={handleSendEmail}
             disabled={isSendingEmail || isGenerating}
-            className={`font-bold text-xs px-4 py-2 rounded-2xl transition-all shadow-md flex items-center gap-1.5 font-reddit ${
+            className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-reddit ${
               emailStatus === 'sent'
                 ? 'bg-emerald-600 text-white shadow-emerald-500/20'
                 : emailStatus === 'error'
@@ -1156,8 +1212,8 @@ export default function GeneratePdfModal({
                 : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-base">
-              {emailStatus === 'sent' ? 'check_circle' : emailStatus === 'error' ? 'error' : 'mail'}
+            <span className={`material-symbols-outlined text-base inline-block ${isSendingEmail ? 'animate-spin' : ''}`}>
+              {isSendingEmail ? 'progress_activity' : emailStatus === 'sent' ? 'check_circle' : emailStatus === 'error' ? 'error' : 'mail'}
             </span>
             <span>
               {isSendingEmail ? 'Mengirim...' : emailStatus === 'sent' ? 'Terkirim!' : 'Kirim Email'}
@@ -1178,8 +1234,8 @@ export default function GeneratePdfModal({
         </div>
       )}
 
-      {/* ═══ 2. Fast & Smooth Single-Page Canvas Preview (No Laggy Vertical Scroll) ═══ */}
-      <div className="bg-slate-200/70 p-4 sm:p-8 rounded-3xl shadow-inner border border-slate-300/80 flex flex-col items-center gap-3">
+      {/* ═══ 3. Scalable Dynamic Single-Page Preview (Zero Scroll Needed on Fit Layar) ═══ */}
+      <div className="bg-slate-200/60 p-4 sm:p-6 rounded-3xl shadow-inner border border-slate-300/80 flex flex-col items-center gap-3 overflow-hidden">
         
         {/* Active Page Title Indicator Badge */}
         <div className="flex items-center gap-2 text-xs font-sans-code text-slate-600 font-bold bg-white/90 px-4 py-1.5 rounded-full shadow-xs border border-slate-200">
@@ -1187,11 +1243,31 @@ export default function GeneratePdfModal({
             {PAGES[currentPageIndex - 1]?.num === 1 ? 'stars' : PAGES[currentPageIndex - 1]?.num === 6 ? 'flag' : 'article'}
           </span>
           <span>{PAGES[currentPageIndex - 1]?.title}</span>
+          <span className="text-slate-400 font-normal ml-1">({Math.round(previewScale * 100)}%)</span>
         </div>
 
-        {/* Dynamic Single Active Page Renderer */}
-        <div key={currentPageIndex} className="w-full flex justify-center animate-in fade-in duration-200">
-          {renderActivePreviewPage()}
+        {/* Dynamic Scaled Canvas Renderer */}
+        <div 
+          style={{
+            width: `${Math.round(794 * previewScale)}px`,
+            height: `${Math.round(1123 * previewScale)}px`,
+            transition: 'all 0.2s ease-out'
+          }}
+          className="relative flex-shrink-0 flex items-start justify-center"
+        >
+          <div 
+            style={{
+              transform: `scale(${previewScale})`,
+              transformOrigin: 'top left',
+              width: '794px',
+              height: '1123px',
+            }}
+            className="absolute top-0 left-0"
+          >
+            <div key={currentPageIndex} className="w-full flex justify-center animate-in fade-in duration-200">
+              {renderActivePreviewPage()}
+            </div>
+          </div>
         </div>
 
       </div>

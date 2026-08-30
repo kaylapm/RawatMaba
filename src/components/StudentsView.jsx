@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
-export default function StudentsView({ students, onSelectStudent, onOpenInsertForStudent, onUpdateStudentEmail }) {
+export default function StudentsView({ students, onSelectStudent, onOpenInsertForStudent, onUpdateStudentEmail, onClearGrade }) {
   const [search, setSearch] = useState('');
   const [filterProdi, setFilterProdi] = useState('ALL');
   const [filterGroup, setFilterGroup] = useState('ALL');
@@ -9,6 +10,8 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
   const [editingEmailId, setEditingEmailId] = useState(null);
   const [tempEmailValue, setTempEmailValue] = useState('');
   const [savingEmailId, setSavingEmailId] = useState(null);
+  const [studentToClear, setStudentToClear] = useState(null);
+  const [isClearing, setIsClearing] = useState(false);
   const itemsPerPage = 9;
 
   const handleStartEditEmail = (student) => {
@@ -23,6 +26,14 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
     }
     setSavingEmailId(null);
     setEditingEmailId(null);
+  };
+
+  const handleConfirmClear = async () => {
+    if (!studentToClear || !onClearGrade) return;
+    setIsClearing(true);
+    await onClearGrade(studentToClear.id, studentToClear.name);
+    setIsClearing(false);
+    setStudentToClear(null);
   };
 
   const prodiOptions = Array.from(new Set(students.map(s => s.prodi)));
@@ -82,12 +93,12 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
   return (
     <div className="space-y-8 animate-in fade-in duration-300 font-isi relative z-10 w-full">
       
-      {/* ═══ Header Section without 2026 mention ═══ */}
-      <div className="relative bg-white p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-6 overflow-hidden">
+      {/* ═══ Header Section ═══ */}
+      <div className="relative bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-6 overflow-hidden">
         
         {/* Watermark BG4.svg */}
         <div 
-          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.06] pointer-events-none z-0"
+          className="absolute inset-0 bg-[url('/assets/BG4.svg')] bg-cover bg-center opacity-[0.05] pointer-events-none z-0"
         />
 
         <div className="relative z-10 flex items-center gap-4">
@@ -97,26 +108,26 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[10px] uppercase tracking-wider px-3 py-0.5 rounded-full border border-yellow-200">
-                Mahasiswa Baru
+                Data Mahasiswa
               </span>
               <span className="text-xs text-slate-400 font-sans-code font-bold">Departemen Sistem Informasi</span>
             </div>
             <h1 className="font-coolvetica font-semibold text-xl sm:text-2xl text-slate-900 mt-2 leading-[1.5] tracking-[-0.025em]">
-              Data Mahasiswa Sistem Informasi & Inovasi Digital
+              Data Mahasiswa Sistem Informasi
             </h1>
-            <p className="text-sm text-slate-500 font-isi mt-2 leading-6">
-              Daftar seluruh mahasiswa baru Departemen Sistem Informasi, status pengisian rapot 4 pilar, dan evaluasi mentoring.
+            <p className="text-sm text-slate-500 font-isi mt-1.5 leading-6">
+              Daftar mahasiswa baru, evaluasi capaian 4 pilar, dan penerbitan rapot mentoring.
             </p>
           </div>
         </div>
 
         {/* Header Right Badges */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="bg-blue-50 border border-gsm-lilac px-4 py-2.5 rounded-2xl text-center shadow-sm">
+          <div className="bg-blue-50/80 backdrop-blur-sm border border-gsm-lilac px-4 py-2.5 rounded-2xl text-center shadow-sm">
             <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Total Maba</span>
             <span className="font-coolvetica font-bold text-xl text-gsm-blue-main">{students.length} Orang</span>
           </div>
-          <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl text-center shadow-sm">
+          <div className="bg-slate-50/80 backdrop-blur-sm border border-slate-200 px-4 py-2.5 rounded-2xl text-center shadow-sm">
             <span className="text-[10px] font-sans-code text-slate-500 uppercase font-bold block">Telah Dinilai</span>
             <span className="font-coolvetica font-bold text-xl text-slate-800">{gradedCount} Maba</span>
           </div>
@@ -299,7 +310,7 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
                   className="flex-1 bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 font-reddit"
                 >
                   <span className="material-symbols-outlined text-sm">edit</span>
-                  <span>Input Nilai</span>
+                  <span>{student.finalScore > 0 ? 'Edit Nilai' : 'Input Nilai'}</span>
                 </button>
                 <button 
                   onClick={() => onSelectStudent(student)}
@@ -308,13 +319,22 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
                 >
                   <span className="material-symbols-outlined text-base">picture_as_pdf</span>
                 </button>
+                {(student.finalScore > 0 || student.status !== 'Belum Dinilai') && (
+                  <button 
+                    onClick={() => setStudentToClear(student)}
+                    className="p-2 rounded-xl border border-rose-200 text-rose-500 hover:text-white hover:bg-rose-600 hover:border-rose-600 transition-all flex items-center justify-center shadow-sm"
+                    title="Hapus / Reset Nilai Mahasiswa Ini"
+                  >
+                    <span className="material-symbols-outlined text-base">delete_sweep</span>
+                  </button>
+                )}
               </div>
             </div>
         ))}
       </div>
 
       {/* ═══ Clean Sliding Window Pagination Controls (Max 5 Page Buttons) ═══ */}
-      <div className="bg-white rounded-3xl p-5 shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-4 text-xs font-sans-code text-slate-500">
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl p-5 shadow-gsm-card border border-gsm-lilac flex flex-wrap items-center justify-between gap-4 text-xs font-sans-code text-slate-500">
         <span>
           Menampilkan {filteredStudents.length > 0 ? startIndex + 1 : 0} – {Math.min(startIndex + itemsPerPage, filteredStudents.length)} dari {filteredStudents.length} Mahasiswa
         </span>
@@ -359,6 +379,75 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
           </button>
         </div>
       </div>
+
+      {/* ═══ Glassmorphism Confirm Delete / Clear Grades Modal (Rendered via Portal) ═══ */}
+      {studentToClear && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gsm-lilac overflow-hidden space-y-0 animate-in zoom-in-95 duration-200">
+            
+            {/* Header Banner with GSM Gradient */}
+            <div className="relative bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8] p-5 text-white overflow-hidden flex items-center justify-between">
+              <img 
+                src="/assets/Bintang.png" 
+                alt="GSM Star" 
+                className="absolute right-2 bottom-1 w-16 h-16 opacity-20 pointer-events-none select-none"
+              />
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-sm flex-shrink-0">
+                  <span className="material-symbols-outlined text-xl text-gsm-cream">delete_sweep</span>
+                </div>
+                <div>
+                  <span className="bg-gsm-cream text-slate-950 font-sans-code font-bold text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-yellow-200">
+                    Konfirmasi Tindakan
+                  </span>
+                  <h3 className="font-coolvetica font-bold text-base text-white mt-1 drop-shadow-sm">
+                    Hapus Nilai Mahasiswa?
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body (Clean Minimalist White) */}
+            <div className="p-6 sm:p-7 space-y-5 text-slate-700 bg-white font-isi">
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-isi leading-relaxed">
+                  Apakah Anda yakin ingin menghapus seluruh evaluasi rapot untuk:
+                </p>
+                <h4 className="font-coolvetica font-bold text-xl text-slate-900 leading-tight">
+                  {studentToClear.name} <span className="text-xs text-slate-400 font-sans-code font-normal">({studentToClear.nim})</span>
+                </h4>
+                <p className="text-xs text-rose-600 font-medium font-isi pt-1 leading-relaxed">
+                  Semua nilai 4 pilar dan catatan feedback akan dikembalikan ke status <strong>Belum Dinilai (0 Poin)</strong>.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setStudentToClear(null)}
+                  disabled={isClearing}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all font-reddit"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmClear}
+                  disabled={isClearing}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-1.5 disabled:opacity-50 font-reddit"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {isClearing ? 'progress_activity' : 'delete'}
+                  </span>
+                  <span>{isClearing ? 'Menghapus...' : 'Ya, Hapus Nilai'}</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );
