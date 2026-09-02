@@ -5,7 +5,7 @@ import { updateUserLastLogin } from '../lib/dataService';
 
 // Daftar Kredensial Resmi 34 Mentor & Super Admin
 export const MENTOR_ACCOUNTS = {
-  webdev: { name: 'Super Administrator HRD', role: 'super_admin', pass: 'kerjarodi', group: null },
+  webdev: { name: 'HRD HMSI Pilar Aksi', role: 'super_admin', pass: 'kerjarodi', group: null },
   naufal: { name: 'Muhammad Naufal Akmal Ali Fanri', role: 'mentor', pass: 'LiShan123', group: 'Li Shan' },
   fauzta: { name: 'Fauzta Athallah Nayottama', role: 'mentor', pass: 'Zeng123', group: 'Zeng' },
   elvira: { name: 'Elvirasari Latib', role: 'mentor', pass: 'Mantis123', group: 'Mantis' },

@@ -19,6 +19,27 @@ function formatLastLogin(timestampISO) {
   }
 }
 
+function renderCategoryPill(category) {
+  const cat = (category || 'Info').toLowerCase();
+  let dotColor = 'bg-sky-500';
+  let label = category || 'Info';
+  
+  if (cat.includes('urgent') || cat.includes('darurat') || cat.includes('penting')) {
+    dotColor = 'bg-rose-500';
+  } else if (cat.includes('deadline') || cat.includes('tenggat')) {
+    dotColor = 'bg-amber-500';
+  } else if (cat.includes('system') || cat.includes('update') || cat.includes('sistem')) {
+    dotColor = 'bg-purple-500';
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-sans-code font-bold uppercase tracking-wider">
+      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 export default function OverviewDashboard({ 
   students = [], 
   classes = [], 
@@ -35,6 +56,7 @@ export default function OverviewDashboard({
   
   // Super Admin Notice Modal State
   const [isAddNoticeOpen, setIsAddNoticeOpen] = useState(false);
+  const [selectedNoticeDetail, setSelectedNoticeDetail] = useState(null);
   const [newNoticeTitle, setNewNoticeTitle] = useState('');
   const [newNoticeDesc, setNewNoticeDesc] = useState('');
   const [newNoticeCategory, setNewNoticeCategory] = useState('Info');
@@ -59,24 +81,25 @@ export default function OverviewDashboard({
     }
   };
 
-  const handleNoticeSubmit = (e) => {
+  const handleNoticeSubmit = async (e) => {
     e.preventDefault();
     if (!newNoticeTitle.trim() || !newNoticeDesc.trim()) return;
 
-    const finalDeadline = noticeDate ? formatDeadlineString(noticeDate, noticeTime) : '';
+    const finalDeadline = noticeDate ? formatDeadlineString(noticeDate, noticeTime) : null;
+
+    const newNotice = {
+      title: newNoticeTitle.trim(),
+      description: newNoticeDesc.trim(),
+      category: newNoticeCategory,
+      date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      deadline: finalDeadline,
+      author: currentUser?.name || 'HRD HMSI Pilar Aksi'
+    };
 
     if (onAddNotice) {
-      onAddNotice({
-        title: newNoticeTitle.trim(),
-        description: newNoticeDesc.trim(),
-        category: newNoticeCategory,
-        deadline: finalDeadline || null,
-        date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-        author: currentUser?.name || 'Panitia Rawat Maba'
-      });
+      await onAddNotice(newNotice);
     }
 
-    // Reset Form
     setNewNoticeTitle('');
     setNewNoticeDesc('');
     setNewNoticeCategory('Info');
@@ -85,9 +108,7 @@ export default function OverviewDashboard({
     setIsAddNoticeOpen(false);
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // SCROLL REVEAL OBSERVERS FOR SECTIONS
-  // ═══════════════════════════════════════════════════════════════
+  // Visibility state for scroll staggered reveals
   const [isKpiVisible, setIsKpiVisible] = useState(false);
   const [isChartVisible, setIsChartVisible] = useState(false);
   const [isBottomVisible, setIsBottomVisible] = useState(false);
@@ -122,31 +143,66 @@ export default function OverviewDashboard({
     };
   }, []);
 
-  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'admin';
+  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.username === 'webdev';
   const isMentor = currentUser?.role === 'mentor';
-  const mentorGroupName = students?.[0]?.kelompok || 'Kelompok Mentoring';
+  const mentorGroupName = currentUser?.group_name || students?.[0]?.kelompok || 'Kelompok Mentoring';
 
   // Get list of unique mentors
-  const mentorList = Array.from(new Set((students || []).map(s => s?.mentor))).filter(Boolean).sort();
+  const mentorList = useMemo(() => {
+    const uniqueMentors = Array.from(new Set((students || []).map(s => s?.mentor))).filter(Boolean).sort();
+    return uniqueMentors.length > 0 ? uniqueMentors : classes.map(c => c.mentor).filter(Boolean);
+  }, [students, classes]);
 
-  // Filter students based on search term and selected mentor filter
+  // Filter students based on role, search term and selected mentor
   const filteredStudents = useMemo(() => {
     return (students || []).filter(student => {
       if (!student) return false;
+
+      // If mentor, lock to their own group / mentor name
+      if (isMentor) {
+        const uGroup = mentorGroupName.toLowerCase().trim();
+        const uName = (currentUser?.name || '').toLowerCase().trim();
+        const sGroup = (student.kelompok || '').toLowerCase().trim();
+        const sMentor = (student.mentor || '').toLowerCase().trim();
+        
+        const isGroupMatch = uGroup && sGroup.includes(uGroup);
+        const isMentorMatch = uName && (sMentor.includes(uName) || uName.includes(sMentor));
+        if (!isGroupMatch && !isMentorMatch) return false;
+      } else if (selectedMentor !== 'ALL') {
+        if (student.mentor !== selectedMentor) return false;
+      }
+
+      // Search bar filter
       const term = (searchTerm || '').toLowerCase();
-      const matchesSearch = 
-        (student.name || '').toLowerCase().includes(term) ||
-        (student.nim || '').toLowerCase().includes(term) ||
-        (student.kelompok || '').toLowerCase().includes(term) ||
-        (student.prodi || '').toLowerCase().includes(term);
-      
-      const matchesMentor = selectedMentor === 'ALL' || student.mentor === selectedMentor;
+      if (term) {
+        const matchesSearch = 
+          (student.name || '').toLowerCase().includes(term) ||
+          (student.nim || '').toLowerCase().includes(term) ||
+          (student.kelompok || '').toLowerCase().includes(term) ||
+          (student.prodi || '').toLowerCase().includes(term);
+        return matchesSearch;
+      }
 
-      return matchesSearch && matchesMentor;
+      return true;
     });
-  }, [students, searchTerm, selectedMentor]);
+  }, [students, isMentor, mentorGroupName, currentUser, selectedMentor, searchTerm]);
 
-  // Dynamic stats
+  // Filter classes based on role and selected mentor
+  const filteredClasses = useMemo(() => {
+    return classes.filter(cls => {
+      if (isMentor) {
+        const uGroup = mentorGroupName.toLowerCase().trim();
+        const uName = (currentUser?.name || '').toLowerCase().trim();
+        const cName = (cls.name || '').toLowerCase().trim();
+        const cMentor = (cls.mentor || '').toLowerCase().trim();
+        return (uGroup && cName.includes(uGroup)) || (uName && cMentor.includes(uName));
+      } else if (selectedMentor !== 'ALL') {
+        return cls.mentor === selectedMentor;
+      }
+      return true;
+    });
+  }, [classes, isMentor, mentorGroupName, currentUser, selectedMentor]);
+
   const totalStudents = filteredStudents.length;
   const gradedStudents = filteredStudents.filter(s => s.status !== 'Belum Dinilai' && (s.finalScore > 0 || Object.values(s.scores || {}).some(v => v > 0)));
   const unratedStudents = filteredStudents.filter(s => !gradedStudents.includes(s));
@@ -193,8 +249,6 @@ export default function OverviewDashboard({
       };
     });
   }, [gradedStudents]);
-
-
 
   return (
     <div className="space-y-8 font-isi relative z-10 w-full">
@@ -255,7 +309,114 @@ export default function OverviewDashboard({
         </div>
       </div>
 
-      {/* ═══ 2. 4 Dynamic KPI Summary Cards Grid (Scroll Staggered Reveal) ═══ */}
+      {/* ═══ 2. TOP POSITION: Reminders & Pengumuman Panitia (High Priority & Glassmorphism Design) ═══ */}
+      {(notices.length > 0 || isSuperAdmin) && (
+        <div className="space-y-3.5 animate-in fade-in slide-in-from-top-3 duration-500">
+          <div className="flex flex-wrap justify-between items-center gap-3 px-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gsm-blue-main/10 text-gsm-blue-main flex items-center justify-center font-bold">
+                <span className="material-symbols-outlined text-lg">campaign</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-coolvetica font-bold text-base sm:text-lg text-slate-900 tracking-wide">
+                  Pengumuman & Reminder Panitia
+                </h2>
+                {notices.length > 0 && (
+                  <span className="text-[10px] font-sans-code font-bold bg-sky-500/10 text-sky-700 px-2.5 py-0.5 rounded-full border border-sky-500/20 backdrop-blur-md">
+                    {notices.length} Aktif
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Super Admin Add Notice Button */}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setIsAddNoticeOpen(true)}
+                className="bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all shadow-sm shadow-gsm-blue-main/20 flex items-center gap-1.5 font-reddit"
+              >
+                <span className="material-symbols-outlined text-sm">add_circle</span>
+                <span>Tambah Pengumuman</span>
+              </button>
+            )}
+          </div>
+
+          {notices.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-white/70 backdrop-blur-md border border-dashed border-slate-200 text-center text-xs text-slate-400 font-sans-code">
+              Belum ada pengumuman aktif saat ini.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {notices.map((notice, idx) => {
+                const displayAuthor = notice.author === 'Super Administrator HRD' ? 'HRD HMSI Pilar Aksi' : (notice.author || 'Panitia Rawat Maba');
+
+                return (
+                  <div 
+                    key={notice.id}
+                    onClick={() => setSelectedNoticeDetail(notice)}
+                    className="bg-white rounded-3xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 hover:border-slate-300 hover:shadow-[0_10px_30px_rgb(0,0,0,0.06)] hover:-translate-y-0.5 cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between group"
+                    style={{ transitionDelay: `${idx * 60}ms` }}
+                    title="Klik untuk melihat detail pengumuman lengkap"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        {renderCategoryPill(notice.category)}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400 text-[10px] font-sans-code">{notice.date}</span>
+                          <span className="material-symbols-outlined text-xs text-slate-300 group-hover:text-gsm-blue-main transition-colors">open_in_new</span>
+                        </div>
+                      </div>
+
+                      <h3 className="font-serif-judul font-bold text-xs sm:text-sm text-slate-900 leading-snug mb-1.5 tracking-wide group-hover:text-gsm-blue-main transition-colors">
+                        {notice.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-600 line-clamp-3 font-isi leading-relaxed">
+                        {notice.description}
+                      </p>
+
+                      {notice.deadline && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-sans-code font-medium text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-xl">
+                          <span className="material-symbols-outlined text-xs text-slate-400">schedule</span>
+                          <span>Deadline: <strong className="text-slate-800 font-bold">{notice.deadline}</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] font-sans-code text-slate-400">
+                      <span className="truncate max-w-[140px] text-slate-500 font-medium">{displayAuthor}</span>
+
+                      {/* Delete button for Super Admin */}
+                      {isSuperAdmin && onDeleteNotice ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Hapus pengumuman "${notice.title}"?`)) {
+                              onDeleteNotice(notice.id);
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-all"
+                          title="Hapus Pengumuman"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
+                      ) : (
+                        <span className="text-gsm-blue-main font-bold flex items-center gap-0.5">
+                          <span>Detail</span>
+                          <span className="material-symbols-outlined text-[11px]">arrow_forward</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 3. 4 Dynamic KPI Summary Cards Grid (Scroll Staggered Reveal) ═══ */}
       <div 
         ref={kpiRef}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
@@ -365,7 +526,7 @@ export default function OverviewDashboard({
 
       </div>
 
-      {/* ═══ 3. Main Analytics: Sumbu X 4 Pilar Bar Chart + Insight (Scroll Reveal) ═══ */}
+      {/* ═══ 4. Main Analytics: Sumbu X 4 Pilar Bar Chart + Insight (Scroll Reveal) ═══ */}
       <div 
         ref={chartRef}
         className={`grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-700 ease-out ${
@@ -538,164 +699,63 @@ export default function OverviewDashboard({
 
       </div>
 
-      {/* ═══ 4. Mentor Progress & Dynamic Reminders (Scroll Reveal) ═══ */}
+      {/* ═══ 5. Mentor Progress List (Scroll Reveal) ═══ */}
       <div 
         ref={bottomRef}
-        className={`grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-700 ease-out ${
+        className={`bg-white rounded-3xl p-6 sm:p-7 shadow-gsm-card border border-gsm-lilac hover:shadow-gsm-hover transition-all duration-700 ease-out ${
           isBottomVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
         }`}
       >
-        
-        {/* Mentor Progress List (5 Cols) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-6 shadow-gsm-card border border-gsm-lilac flex flex-col hover:shadow-gsm-hover transition-all">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="font-coolvetica font-bold text-lg text-slate-900 tracking-wide">
-                Progres Input Mentor
-              </h2>
-              <p className="text-xs text-slate-500 font-sans-code tracking-wide">
-                Status pengisian nilai per mentor kelompok
-              </p>
-            </div>
-            <span className="text-[11px] bg-blue-50 text-gsm-blue-main border border-gsm-lilac px-3 py-1 rounded-full font-bold font-sans-code tracking-wide">
-              {mentorList.length} Mentor
-            </span>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-5 pb-4 border-b border-slate-100">
+          <div>
+            <h2 className="font-coolvetica font-bold text-lg text-slate-900 tracking-wide">
+              Progres Input & Login Mentor
+            </h2>
+            <p className="text-xs text-slate-500 font-sans-code tracking-wide">
+              Status pengisian nilai dan riwayat login per mentor kelompok
+            </p>
           </div>
-
-          <div className="space-y-3 flex-1 max-h-[380px] overflow-y-auto font-isi pr-1 custom-scrollbar">
-            {mentorList.map((mName) => {
-              const mStudents = students.filter(s => 
-                s.mentor?.toLowerCase().includes(mName.toLowerCase()) || 
-                mName.toLowerCase().includes(s.mentor?.toLowerCase() || '')
-              );
-              const mGraded = mStudents.filter(s => s.status !== 'Belum Dinilai');
-              const lastLogin = getMentorLastLogin(mName, mentorLogins);
-              const loginBadge = formatLastLogin(lastLogin);
-
-              return (
-                <div key={mName} className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-gsm-blue-main transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gsm-blue-gradient text-white flex items-center justify-center font-bold text-xs shadow-sm font-sans-code">
-                      {mName.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-serif-judul font-bold text-xs text-slate-900 tracking-wide">{mName}</p>
-                      <p className="text-[10px] text-slate-500 font-sans-code tracking-wide">{mGraded.length}/{mStudents.length || 8} Maba Dinilai</p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full font-sans-code tracking-wider ${
-                    lastLogin ? 'bg-blue-50 text-gsm-blue-main border border-blue-200' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {loginBadge}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <span className="text-[11px] bg-blue-50 text-gsm-blue-main border border-gsm-lilac px-3 py-1 rounded-full font-bold font-sans-code tracking-wide">
+            {mentorList.length} Mentor Terdaftar
+          </span>
         </div>
 
-        {/* Reminders / Notice Board with Super Admin Add & Delete Action (7 Cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-gsm-blue-main text-2xl">notifications_active</span>
-              <div>
-                <h2 className="font-coolvetica font-bold text-lg text-slate-900 tracking-wide">
-                  Reminder & Pengumuman Panitia
-                </h2>
-                <span className="text-[11px] font-sans-code text-slate-500 tracking-wide">{notices.length} Catatan Aktif</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 font-isi max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+          {mentorList.map((mName) => {
+            const mStudents = students.filter(s => 
+              s.mentor?.toLowerCase().includes(mName.toLowerCase()) || 
+              mName.toLowerCase().includes(s.mentor?.toLowerCase() || '')
+            );
+            const mGraded = mStudents.filter(s => s.status !== 'Belum Dinilai');
+            const lastLogin = getMentorLastLogin(mName, mentorLogins);
+            const loginBadge = formatLastLogin(lastLogin);
+
+            return (
+              <div key={mName} className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-gsm-blue-main hover:bg-slate-50/50 transition-all">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-gsm-blue-gradient text-white flex items-center justify-center font-bold text-xs shadow-sm font-sans-code flex-shrink-0">
+                    {mName.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="truncate">
+                    <p className="font-serif-judul font-bold text-xs text-slate-900 tracking-wide truncate">{mName}</p>
+                    <p className="text-[10px] text-slate-500 font-sans-code tracking-wide">{mGraded.length}/{mStudents.length || 8} Maba Dinilai</p>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full font-sans-code tracking-wider flex-shrink-0 ${
+                  lastLogin ? 'bg-blue-50 text-gsm-blue-main border border-blue-200' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {loginBadge}
+                </span>
               </div>
-            </div>
-
-            {/* Super Admin Add Notice Button */}
-            {isSuperAdmin && (
-              <button
-                type="button"
-                onClick={() => setIsAddNoticeOpen(true)}
-                className="bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-2xl transition-all shadow-md shadow-gsm-blue-main/20 flex items-center gap-1.5 font-reddit"
-              >
-                <span className="material-symbols-outlined text-base">add_circle</span>
-                <span>Tambah Pengumuman</span>
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {notices.map((notice, idx) => {
-              const cat = (notice.category || 'Info').toLowerCase();
-              let badgeStyle = 'bg-blue-50 text-gsm-blue-main border border-gsm-lilac';
-              if (cat.includes('urgent') || cat.includes('darurat')) {
-                badgeStyle = 'bg-[#E59B86]/20 text-[#C86047] border border-[#E59B86]/40';
-              } else if (cat.includes('deadline') || cat.includes('tenggat')) {
-                badgeStyle = 'bg-[#E59B86]/30 text-rose-900 border border-rose-300';
-              } else if (cat.includes('system') || cat.includes('update')) {
-                badgeStyle = 'bg-[#C896E0]/20 text-[#8A3AB9] border border-[#C896E0]/40';
-              }
-
-              return (
-                <div 
-                  key={notice.id}
-                  className={`bg-white rounded-3xl p-5 shadow-gsm-card border border-gsm-lilac hover:border-gsm-blue-main transition-all duration-500 relative overflow-hidden flex flex-col justify-between group ${
-                    isBottomVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-6 scale-95'
-                  }`}
-                  style={{ transitionDelay: `${idx * 80}ms` }}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] font-sans-code ${badgeStyle}`}>
-                        {notice.category || 'Info'}
-                      </span>
-                      <span className="text-slate-400 text-[10px] font-sans-code">{notice.date}</span>
-                    </div>
-
-                    <h3 className="font-serif-judul font-bold text-xs text-slate-900 leading-snug mb-1.5 tracking-wide">
-                      {notice.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-600 line-clamp-3 font-isi leading-relaxed">
-                      {notice.description}
-                    </p>
-
-                    {notice.deadline && (
-                      <div className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-sans-code font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                        <span className="material-symbols-outlined text-xs">schedule</span>
-                        <span>Deadline: {notice.deadline}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] font-sans-code text-slate-400">
-                    <span>{notice.author || 'Panitia Rawat Maba'}</span>
-
-                    {/* Delete button for Super Admin */}
-                    {isSuperAdmin && onDeleteNotice ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm(`Hapus pengumuman "${notice.title}"?`)) {
-                            onDeleteNotice(notice.id);
-                          }
-                        }}
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-all"
-                        title="Hapus Pengumuman"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
-                    ) : (
-                      <span className="text-gsm-blue-main font-bold">Terverifikasi</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
-
       </div>
 
       {/* ═══ Super Admin Add Notice Modal (Portal to Body for True Fullscreen Overlay) ═══ */}
       {isAddNoticeOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden p-6 sm:p-7 space-y-5">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/80 overflow-hidden p-6 sm:p-7 space-y-5">
             
             {/* Header Modal */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -734,113 +794,111 @@ export default function OverviewDashboard({
                   value={newNoticeTitle}
                   onChange={(e) => setNewNoticeTitle(e.target.value)}
                   placeholder="Misal: Batas Akhir Input Nilai Rapot..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-gsm-blue-main focus:bg-white text-slate-800"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-gsm-blue-main focus:bg-white text-slate-900 font-medium"
                 />
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 font-sans-code uppercase text-[10px]">
-                    Kategori Pengumuman:
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 font-sans-code uppercase text-[10px]">
+                  Kategori Pengumuman:
+                </label>
+                <select 
+                  value={newNoticeCategory}
+                  onChange={(e) => setNewNoticeCategory(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-gsm-blue-main focus:bg-white text-slate-900 font-medium cursor-pointer"
+                >
+                  <option value="Info">Info Umum</option>
+                  <option value="Urgent">Urgent / Penting</option>
+                  <option value="Deadline">Deadline Penilaian</option>
+                  <option value="System Update">Update Sistem</option>
+                </select>
+              </div>
+
+              {/* Deadline Setting with Interactive Date & Time Picker */}
+              <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="font-bold text-slate-700 font-sans-code uppercase text-[10px] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-gsm-blue-main">event</span>
+                    <span>Pilih Tanggal & Jam Batas Waktu (Opsional):</span>
                   </label>
-                  <select
-                    value={newNoticeCategory}
-                    onChange={(e) => setNewNoticeCategory(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-gsm-blue-main focus:bg-white text-slate-800 cursor-pointer"
-                  >
-                    <option value="Info">Info Umum</option>
-                    <option value="Urgent">Urgent / Penting</option>
-                    <option value="Deadline">Deadline Penilaian</option>
-                    <option value="System Update">System Update</option>
-                  </select>
+                  {noticeDate && (
+                    <span className="text-[10px] text-gsm-blue-main font-bold font-sans-code bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      {formatDeadlineString(noticeDate, noticeTime)}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Tanggal:</span>
+                    <input 
+                      type="date"
+                      value={noticeDate}
+                      onChange={(e) => setNoticeDate(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Jam (WIB):</span>
+                    <input 
+                      type="time"
+                      value={noticeTime}
+                      onChange={(e) => setNoticeTime(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
+                    />
+                  </div>
                 </div>
 
-                {/* Interactive Date & Time Picker */}
-                <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <label className="font-bold text-slate-700 font-sans-code uppercase text-[10px] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-sm text-gsm-blue-main">event</span>
-                      <span>Pilih Tanggal & Jam Batas Waktu (Opsional):</span>
-                    </label>
-                    {noticeDate && (
-                      <span className="text-[10px] text-gsm-blue-main font-bold font-sans-code bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                        {formatDeadlineString(noticeDate, noticeTime)}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Tanggal:</span>
-                      <input 
-                        type="date"
-                        value={noticeDate}
-                        onChange={(e) => setNoticeDate(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
-                      />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] font-bold text-slate-400 font-sans-code mb-1 uppercase">Pilih Jam (WIB):</span>
-                      <input 
-                        type="time"
-                        value={noticeTime}
-                        onChange={(e) => setNoticeTime(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-gsm-blue-main focus:ring-1 focus:ring-gsm-blue-main text-slate-800 font-sans-code cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Quick Shortcut Buttons */}
-                  <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                    <span className="text-[10px] font-semibold text-slate-400 font-sans-code">Pilihan cepat:</span>
+                {/* Quick Shortcut Buttons */}
+                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                  <span className="text-[10px] font-semibold text-slate-400 font-sans-code">Pilihan cepat:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      setNoticeDate(today);
+                      setNoticeTime('23:59');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                  >
+                    Hari Ini (23:59)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                      setNoticeDate(tomorrow);
+                      setNoticeTime('23:59');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                  >
+                    Besok (23:59)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const daysToSat = (6 - now.getDay() + 7) % 7 || 7;
+                      const sat = new Date(now.getTime() + daysToSat * 86400000).toISOString().split('T')[0];
+                      setNoticeDate(sat);
+                      setNoticeTime('23:59');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                  >
+                    Sabtu ini (23:59)
+                  </button>
+                  {noticeDate && (
                     <button
                       type="button"
                       onClick={() => {
-                        const today = new Date().toISOString().split('T')[0];
-                        setNoticeDate(today);
+                        setNoticeDate('');
                         setNoticeTime('23:59');
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[10px] font-bold text-rose-600 border border-rose-200 transition-all shadow-xs"
                     >
-                      Hari Ini (23:59)
+                      ✕ Hapus Deadline
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-                        setNoticeDate(tomorrow);
-                        setNoticeTime('23:59');
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
-                    >
-                      Besok (23:59)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const now = new Date();
-                        const daysToSat = (6 - now.getDay() + 7) % 7 || 7;
-                        const sat = new Date(now.getTime() + daysToSat * 86400000).toISOString().split('T')[0];
-                        setNoticeDate(sat);
-                        setNoticeTime('23:59');
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-gsm-blue-main hover:text-gsm-blue-main text-[10px] font-bold text-slate-600 transition-all shadow-xs"
-                    >
-                      Sabtu ini (23:59)
-                    </button>
-                    {noticeDate && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNoticeDate('');
-                          setNoticeTime('23:59');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[10px] font-bold text-rose-600 border border-rose-200 transition-all shadow-xs"
-                      >
-                        ✕ Hapus Deadline
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -876,6 +934,74 @@ export default function OverviewDashboard({
               </div>
             </form>
 
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ═══ Notice Detail Modal (Clean White Card Layout) ═══ */}
+      {selectedNoticeDetail && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200"
+          onClick={() => setSelectedNoticeDetail(null)}
+        >
+          <div 
+            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden p-6 sm:p-8 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Detail */}
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {renderCategoryPill(selectedNoticeDetail.category)}
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-400 text-xs font-sans-code font-medium">{selectedNoticeDetail.date}</span>
+                </div>
+                <h3 className="font-coolvetica font-bold text-xl sm:text-2xl text-slate-900 leading-snug tracking-tight">
+                  {selectedNoticeDetail.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedNoticeDetail(null)}
+                className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors flex-shrink-0"
+              >
+                <span className="material-symbols-outlined text-lg leading-none">close</span>
+              </button>
+            </div>
+
+            {/* Deadline Banner if exists (Minimalist Clean Neutral Card) */}
+            {selectedNoticeDetail.deadline && (
+              <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center gap-3.5 text-xs">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-xl text-slate-500">schedule</span>
+                </div>
+                <div>
+                  <span className="font-bold block text-[10px] uppercase tracking-wider font-sans-code text-slate-400">Batas Waktu (Deadline):</span>
+                  <span className="font-bold text-slate-800 font-sans-code text-xs sm:text-sm">{selectedNoticeDetail.deadline}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Body / Description Content (Clean natural typography on pure white) */}
+            <div className="text-xs sm:text-sm text-slate-700 leading-relaxed font-isi whitespace-pre-line py-1 max-h-[340px] overflow-y-auto custom-scrollbar pr-1">
+              {selectedNoticeDetail.description}
+            </div>
+
+            {/* Footer Detail */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-sans-code text-slate-500">
+              <span className="text-slate-600 font-sans-code text-xs font-semibold">
+                {selectedNoticeDetail.author === 'Super Administrator HRD' ? 'HRD HMSI Pilar Aksi' : (selectedNoticeDetail.author || 'Panitia Rawat Maba')}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedNoticeDetail(null)}
+                className="px-6 py-2.5 bg-gsm-blue-main hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-gsm-blue-main/20 hover:shadow-lg font-reddit"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>,
         document.body

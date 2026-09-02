@@ -12,6 +12,7 @@ import EditProfileModal from './components/EditProfileModal';
 import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
+import { supabase } from './lib/supabase';
 import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
@@ -61,9 +62,37 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // 1. Initial Load: Fetch DB Data from Supabase
+  // 1. Initial Load: Fetch DB Data & Sync User Profile from Supabase
   useEffect(() => {
     async function loadData() {
+      // Auto-sync currentUser latest profile name & role directly from Supabase DB
+      if (currentUser?.username) {
+        try {
+          const { data: dbProfile } = await supabase
+            .from('profiles')
+            .select('id, name, role, username')
+            .eq('username', currentUser.username)
+            .maybeSingle();
+
+          if (dbProfile && dbProfile.name) {
+            setCurrentUser(prev => {
+              const updated = {
+                ...prev,
+                name: dbProfile.name,
+                role: dbProfile.role || prev.role
+              };
+              localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+                user: updated,
+                expiresAt: Date.now() + SESSION_DURATION_MS
+              }));
+              return updated;
+            });
+          }
+        } catch (profErr) {
+          console.warn('Could not sync user profile from DB:', profErr);
+        }
+      }
+
       const realData = await fetchAllRealData();
       if (realData && realData.students && realData.students.length > 0) {
         setAllStudents(realData.students);
