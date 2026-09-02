@@ -29,8 +29,6 @@ serve(async (req: Request) => {
       kelompok,
       mentor,
       nilai_akhir,
-      predikat,
-      status,
       logo_url,
       pdf_base64,
       pdf_filename,
@@ -49,17 +47,47 @@ serve(async (req: Request) => {
       );
     }
 
-    // Process display values with safe fallbacks
-    const displayScore = (nilai_akhir !== undefined && nilai_akhir !== null && nilai_akhir !== 0) ? nilai_akhir : 85;
-    const displayPredicate = (predikat && predikat !== '-') ? predikat : 'A';
-    const displayStatus = (status && status !== 'Belum Dinilai') ? status : 'LULUS (Sangat Baik)';
-    const displayNrp = student_nim || '5026261001';
-    const displayProdi = student_prodi || 'Sistem Informasi';
+    // Nilai akhir adalah sumber utama agar predikat dan status selalu konsisten.
+    // Skor 0/kosong berarti evaluasi belum pernah diisi, bukan nilai kelulusan.
+    const numericScore = Number(nilai_akhir);
+    const hasEvaluation = Number.isFinite(numericScore) && numericScore > 0 && numericScore <= 100;
+    const displayScore = hasEvaluation
+      ? (Number.isInteger(numericScore) ? String(numericScore) : numericScore.toFixed(1).replace(/\.0$/, ''))
+      : 'Belum Dinilai';
+    const displayPredicate = !hasEvaluation
+      ? '-'
+      : numericScore >= 90
+        ? 'Sangat Siap Oprec'
+        : numericScore >= 75
+          ? 'Siap Oprec'
+          : numericScore >= 60
+            ? 'Cukup Siap'
+            : 'Perlu Pendampingan';
+    const displayStatus = !hasEvaluation
+      ? 'Belum Dinilai'
+      : numericScore >= 75
+        ? 'Lulus'
+        : numericScore >= 60
+          ? 'Perlu Latihan'
+          : 'Perlu Pendampingan';
+    const displayScoreHtml = hasEvaluation
+      ? `${displayScore} <span style="font-size: 12px; font-weight: 500; color: #64748b;">dari 100 &middot; ${displayPredicate}</span>`
+      : '<span style="font-size: 14px; color: #64748b;">Belum Dinilai</span>';
+    const displayNrp = student_nim || '-';
+    const displayProdi = student_prodi || '-';
     const safeLogoUrl = typeof logo_url === 'string' && /^https:\/\//i.test(logo_url)
       ? logo_url
       : '';
 
-    const subject = `[RAPOT RAWAT MABA] Hasil Evaluasi - ${to_name} (${displayNrp})`;
+    const subject = `[RAPOT RAWAT MABA] ${hasEvaluation ? 'Hasil Evaluasi' : 'Status Evaluasi'} - ${to_name} (${displayNrp})`;
+    const evaluationIntroHtml = hasEvaluation
+      ? `Berikut kami sampaikan hasil evaluasi resmi <strong>Rapot Rawat Maba</strong> untuk Anda.
+                Dokumen PDF resmi terlampir pada email ini.`
+      : `Rapot Rawat Maba Anda saat ini <strong>belum dinilai</strong>. Belum ada nilai akhir,
+                predikat, maupun status kelulusan yang ditetapkan.`;
+    const evaluationIntroText = hasEvaluation
+      ? 'Berikut kami sampaikan hasil evaluasi Rapot Rawat Maba:'
+      : 'Rapot Rawat Maba Anda saat ini belum dinilai:';
 
     // Clean Professional HTML Email Template — No emoji, no gradients, solid blue (#3852f6)
     const htmlBody = `
@@ -110,8 +138,7 @@ serve(async (req: Request) => {
                 Halo, ${to_name}
               </p>
               <p style="margin: 0 0 28px 0; font-size: 13px; line-height: 1.8; color: #475569;">
-                Berikut kami sampaikan hasil evaluasi resmi <strong>Rapot Rawat Maba</strong> untuk Anda. 
-                Dokumen PDF resmi terlampir pada email ini.
+                ${evaluationIntroHtml}
               </p>
 
               <!-- Student Info Table -->
@@ -138,7 +165,7 @@ serve(async (req: Request) => {
                 </tr>
                 <tr>
                   <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Nilai Akhir</td>
-                  <td style="padding: 12px 16px; font-size: 18px; font-weight: 700; color: #003cec;">${displayScore} <span style="font-size: 12px; font-weight: 500; color: #64748b;">dari 100 · ${displayPredicate}</span></td>
+                  <td style="padding: 12px 16px; font-size: 18px; font-weight: 700; color: #003cec;">${displayScoreHtml}</td>
                 </tr>
               </table>
 
@@ -203,7 +230,7 @@ serve(async (req: Request) => {
 
     const textBody = `Halo ${to_name},
 
-Berikut kami sampaikan hasil evaluasi Rapot Rawat Maba:
+${evaluationIntroText}
 - Nama: ${to_name}
 - NRP: ${displayNrp}
 - Program Studi: ${displayProdi}
