@@ -287,7 +287,7 @@ export const initialClasses = [
     "id": "KEL-29",
     "name": "Master Storming Ox",
     "mentor": "Aditya Chandra",
-    "membersCount": 9,
+    "membersCount": 8,
     "gradedCount": 0,
     "avgScore": 0,
     "room": "Ruang Mentoring Master Storming Ox",

@@ -44,7 +44,8 @@ export async function fetchAllRealData() {
           feedback_oprec,
           updated_at
         )
-      `);
+      `)
+      .not('group_id', 'is', null);
 
     // 2. Fetch Dynamic Notices/Announcements from Supabase
     let fetchedNotices = initialNotices;
@@ -69,7 +70,9 @@ export async function fetchAllRealData() {
       console.warn('Could not fetch notices from Supabase, using defaults:', nErr);
     }
 
-    if (studentErr || !dbStudents || dbStudents.length === 0) {
+    const validStudents = (dbStudents || []).filter(s => s.group_id && s.mentoring_groups?.name);
+
+    if (studentErr || !validStudents || validStudents.length === 0) {
       console.warn('Using local dataset as Supabase table is empty or loading...', studentErr);
       return {
         students: initialStudents,
@@ -80,7 +83,7 @@ export async function fetchAllRealData() {
     }
 
     // Format DB Students with new rubrik structure
-    const formattedStudents = dbStudents.map(s => {
+    const formattedStudents = validStudents.map(s => {
       const groupName = s.mentoring_groups?.name || 'Kelompok Mentoring';
       const mentorName = s.mentoring_groups?.mentors?.name || 'Mentor Mentoring';
       const ev = s.rapot_evaluations?.[0] || s.rapot_evaluations || {};

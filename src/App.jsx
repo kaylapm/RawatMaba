@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
 import { supabase } from './lib/supabase';
 import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
+import { MENTOR_ACCOUNTS } from './components/LoginPage';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 Hours Session Stay
@@ -76,10 +77,13 @@ export default function App() {
 
           if (dbProfile && dbProfile.name) {
             setCurrentUser(prev => {
+              const fallbackData = MENTOR_ACCOUNTS[dbProfile.username];
+              const groupName = fallbackData?.group || prev?.group_name || null;
               const updated = {
                 ...prev,
                 name: dbProfile.name,
-                role: dbProfile.role || prev.role
+                role: dbProfile.role || prev?.role || (dbProfile.username === 'webdev' ? 'super_admin' : 'mentor'),
+                group_name: groupName
               };
               localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
                 user: updated,
@@ -113,7 +117,7 @@ export default function App() {
   // 2. Check if logged in user is mentor or admin
   const isMentor = currentUser?.role === 'mentor';
   const mentorName = currentUser?.name || '';
-  const mentorGroup = currentUser?.group_name || '';
+  const mentorGroup = currentUser?.group_name || MENTOR_ACCOUNTS[currentUser?.username]?.group || '';
 
   // 3. Filter Students and Classes based on Mentor Role
   const accessibleStudents = useMemo(() => {
@@ -125,8 +129,8 @@ export default function App() {
       const uGroup = mentorGroup.toLowerCase().trim();
       const uName = mentorName.toLowerCase().trim();
       
-      const isGroupMatch = uGroup && sGroup.includes(uGroup);
-      const isMentorNameMatch = uName && (sMentor.includes(uName) || uName.includes(sMentor));
+      const isGroupMatch = uGroup && (sGroup === uGroup);
+      const isMentorNameMatch = uName && (sMentor === uName || sMentor.includes(uName) || uName.includes(sMentor));
       
       return isGroupMatch || isMentorNameMatch;
     });
@@ -141,8 +145,8 @@ export default function App() {
       const uGroup = mentorGroup.toLowerCase().trim();
       const uName = mentorName.toLowerCase().trim();
 
-      const isGroupMatch = uGroup && cName.includes(uGroup);
-      const isMentorMatch = uName && (cMentor.includes(uName) || uName.includes(cMentor));
+      const isGroupMatch = uGroup && (cName === uGroup);
+      const isMentorMatch = uName && (cMentor === uName || cMentor.includes(uName) || uName.includes(cMentor));
 
       return isGroupMatch || isMentorMatch;
     });

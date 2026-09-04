@@ -165,8 +165,8 @@ export default function OverviewDashboard({
         const sGroup = (student.kelompok || '').toLowerCase().trim();
         const sMentor = (student.mentor || '').toLowerCase().trim();
         
-        const isGroupMatch = uGroup && sGroup.includes(uGroup);
-        const isMentorMatch = uName && (sMentor.includes(uName) || uName.includes(sMentor));
+        const isGroupMatch = uGroup && (sGroup === uGroup);
+        const isMentorMatch = uName && (sMentor === uName || sMentor.includes(uName) || uName.includes(sMentor));
         if (!isGroupMatch && !isMentorMatch) return false;
       } else if (selectedMentor !== 'ALL') {
         if (student.mentor !== selectedMentor) return false;
@@ -195,7 +195,9 @@ export default function OverviewDashboard({
         const uName = (currentUser?.name || '').toLowerCase().trim();
         const cName = (cls.name || '').toLowerCase().trim();
         const cMentor = (cls.mentor || '').toLowerCase().trim();
-        return (uGroup && cName.includes(uGroup)) || (uName && cMentor.includes(uName));
+        const isGroupMatch = uGroup && (cName === uGroup);
+        const isMentorMatch = uName && (cMentor === uName || cMentor.includes(uName) || uName.includes(cMentor));
+        return isGroupMatch || isMentorMatch;
       } else if (selectedMentor !== 'ALL') {
         return cls.mentor === selectedMentor;
       }
