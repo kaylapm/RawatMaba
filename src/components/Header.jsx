@@ -7,7 +7,10 @@ export default function Header({
   onLogout, 
   onOpenInsert,
   onOpenPdf,
-  onOpenEditProfile
+  onOpenEditProfile,
+  isSyncing = false,
+  isRealtimeConnected = true,
+  onRefreshData
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -102,8 +105,27 @@ export default function Header({
           })}
         </nav>
 
-        {/* Right User Profile Avatar & Mobile Hamburger Toggle */}
+        {/* Right User Profile Avatar, Realtime Status & Mobile Hamburger Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+          {/* Realtime Live Pulse & Manual Sync Trigger */}
+          {onRefreshData && (
+            <button
+              type="button"
+              onClick={() => onRefreshData(true)}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 text-slate-700 text-xs font-sans-code font-bold transition-all disabled:opacity-60 cursor-pointer shadow-inner group"
+              title="Klik untuk menyinkronkan data realtime dengan database Supabase"
+            >
+              <span className={`w-2 h-2 rounded-full ${isRealtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span className={`material-symbols-outlined text-sm text-[#003CEC] ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`}>
+                sync
+              </span>
+              <span className="hidden md:inline text-[11px] font-semibold text-slate-600">
+                {isSyncing ? 'Syncing...' : 'Live'}
+              </span>
+            </button>
+          )}
 
           {/* User Profile Badge (Fixed Perfect Circle) */}
           <div className="relative flex-shrink-0">

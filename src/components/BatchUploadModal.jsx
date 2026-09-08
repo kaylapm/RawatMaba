@@ -57,7 +57,14 @@ export default function BatchUploadModal({ isOpen, onClose, onBatchSuccess }) {
               Upload file CSV/Excel rekapitulasi nilai kelompok.
             </p>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white bg-white/10 p-1.5 rounded-full">✕</button>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="w-8 h-8 min-w-[32px] min-h-[32px] aspect-square rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center transition-all border border-white/20 flex-shrink-0 shadow-xs"
+            title="Tutup Modal"
+          >
+            <span className="material-symbols-outlined text-lg leading-none">close</span>
+          </button>
         </div>
 
         {/* Form Body */}

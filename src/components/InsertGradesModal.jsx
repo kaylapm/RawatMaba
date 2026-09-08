@@ -500,7 +500,7 @@ export default function InsertGradesModal({
             <button 
               type="button" 
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 text-white/80 hover:text-white flex items-center justify-center transition-all border border-white/20 flex-shrink-0 shadow-sm"
+              className="w-10 h-10 min-w-[40px] min-h-[40px] aspect-square rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-all border border-white/20 flex-shrink-0 shadow-sm"
               title="Tutup Form"
             >
               <span className="material-symbols-outlined text-xl flex items-center justify-center leading-none select-none">close</span>

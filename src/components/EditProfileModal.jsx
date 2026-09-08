@@ -124,10 +124,12 @@ export default function EditProfileModal({ isOpen, onClose, currentUser, onUpdat
             </div>
 
             <button 
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/80 hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all border border-slate-200/60 shadow-sm"
+              className="w-8 h-8 min-w-[32px] min-h-[32px] aspect-square rounded-full bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all border border-slate-200/80 shadow-xs flex-shrink-0"
+              title="Tutup Modal"
             >
-              ✕
+              <span className="material-symbols-outlined text-base leading-none">close</span>
             </button>
           </div>
         </div>

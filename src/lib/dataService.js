@@ -205,26 +205,7 @@ export async function fetchAllRealData() {
     }
 
     // Extract Unique Groups
-    const groupNames = Array.from(new Set(formattedStudents.map(s => s.kelompok)));
-    const formattedClasses = groupNames.map((g, idx) => {
-      const members = formattedStudents.filter(s => s.kelompok === g);
-      const mentorName = members[0]?.mentor || 'Mentor';
-      const graded = members.filter(s => s.status !== 'Belum Dinilai');
-      const membersCount = members.length;
-      const gradedCount = graded.length;
-      const progressPercent = membersCount > 0 ? Math.round((gradedCount / membersCount) * 100) : 0;
-      return {
-        id: `KEL-${idx + 1}`,
-        name: g,
-        mentor: mentorName,
-        membersCount: membersCount,
-        gradedCount: gradedCount,
-        progress: progressPercent,
-        status: progressPercent === 100 ? 'Selesai' : (progressPercent > 0 ? `${progressPercent}%` : 'Belum Mulai'),
-        room: `Ruang Mentoring ${g}`,
-        schedule: "Setiap Sabtu, 08.00 WIB"
-      };
-    });
+    const formattedClasses = buildClassesFromStudents(formattedStudents);
 
     return {
       students: formattedStudents,
@@ -244,6 +225,48 @@ export async function fetchAllRealData() {
       mentorLogins: {}
     };
   }
+}
+
+export function isStudentReadyToPrint(student) {
+  if (!student) return false;
+  const hasScore = Number(student.finalScore || 0) > 0 || Object.values(student.scores || {}).some(v => Number(v) > 0);
+  if (!hasScore) return false;
+
+  const hasPesan = Boolean(
+    (student.feedback_apresiasi && student.feedback_apresiasi.trim()) ||
+    (student.feedbackApresiasi && student.feedbackApresiasi.trim()) ||
+    (student.feedback_saran && student.feedback_saran.trim()) ||
+    (student.feedbackSaran && student.feedbackSaran.trim()) ||
+    (student.feedback_oprec && student.feedback_oprec.trim()) ||
+    (student.feedbackOprec && student.feedbackOprec.trim())
+  );
+
+  return hasScore && hasPesan;
+}
+
+export function buildClassesFromStudents(students = []) {
+  if (!students || students.length === 0) return initialClasses;
+  const groupNames = Array.from(new Set(students.map(s => s.kelompok))).filter(Boolean);
+  if (groupNames.length === 0) return initialClasses;
+  return groupNames.map((g, idx) => {
+    const members = students.filter(s => s.kelompok === g);
+    const mentorName = members[0]?.mentor || 'Mentor';
+    const readyMembers = members.filter(isStudentReadyToPrint);
+    const membersCount = members.length;
+    const gradedCount = readyMembers.length;
+    const progressPercent = membersCount > 0 ? Math.round((gradedCount / membersCount) * 100) : 0;
+    return {
+      id: `KEL-${String(idx + 1).padStart(2, '0')}`,
+      name: g,
+      mentor: mentorName,
+      membersCount: membersCount,
+      gradedCount: gradedCount,
+      progress: progressPercent,
+      status: progressPercent === 100 ? 'Selesai' : (progressPercent > 0 ? `${progressPercent}%` : 'Belum Mulai'),
+      room: `Ruang Mentoring ${g}`,
+      schedule: "Setiap Sabtu, 08.00 WIB"
+    };
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════

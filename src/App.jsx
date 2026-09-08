@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from './components/Header';
 import OverviewGuideView from './components/OverviewGuideView';
 import OverviewDashboard from './components/OverviewDashboard';
@@ -13,7 +13,16 @@ import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
 import { supabase } from './lib/supabase';
-import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, updateStudentStatusInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
+import { 
+  fetchAllRealData, 
+  buildClassesFromStudents,
+  saveStudentGradeToSupabase, 
+  clearStudentGradeInSupabase, 
+  updateStudentEmailInSupabase, 
+  updateStudentStatusInSupabase, 
+  createNoticeInSupabase, 
+  deleteNoticeInSupabase 
+} from './lib/dataService';
 import { MENTOR_ACCOUNTS } from './components/LoginPage';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
@@ -43,9 +52,12 @@ export default function App() {
   
   // Real Datasets State from Supabase
   const [allStudents, setAllStudents] = useState(initialStudents);
-  const [allClasses, setAllClasses] = useState(initialClasses);
   const [notices, setNotices] = useState(defaultNotices);
   const [mentorLogins, setMentorLogins] = useState({});
+
+  // Realtime Sync Status
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(true);
 
   // Modals visibility state
   const [isInsertOpen, setIsInsertOpen] = useState(false);
@@ -63,19 +75,55 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // 1. Initial Load: Fetch DB Data & Sync User Profile from Supabase
-  useEffect(() => {
-    async function loadData() {
-      // Auto-sync currentUser latest profile name & role directly from Supabase DB
-      if (currentUser?.username) {
-        try {
-          const { data: dbProfile } = await supabase
-            .from('profiles')
-            .select('id, name, role, username')
-            .eq('username', currentUser.username)
-            .maybeSingle();
+  // Derive allClasses dynamically so grade/status changes immediately update group stats
+  const allClasses = useMemo(() => {
+    return buildClassesFromStudents(allStudents);
+  }, [allStudents]);
 
-          if (dbProfile && dbProfile.name) {
+  // Unified Data Fetcher & Realtime Sync Handler
+  const refreshData = useCallback(async (manual = false) => {
+    try {
+      if (manual) setIsSyncing(true);
+      const realData = await fetchAllRealData();
+
+      if (realData && realData.students && realData.students.length > 0) {
+        setAllStudents(realData.students);
+      }
+      if (realData && realData.notices && realData.notices.length > 0) {
+        setNotices(realData.notices);
+      }
+      if (realData && realData.mentorLogins) {
+        setMentorLogins(realData.mentorLogins);
+      }
+
+      if (manual) {
+        showToast('Data realtime berhasil disinkronkan!');
+      }
+    } catch (err) {
+      console.warn('Realtime fetch failed:', err);
+      if (manual) {
+        showToast('Gagal memuat pembaruan data.');
+      }
+    } finally {
+      if (manual) {
+        setTimeout(() => setIsSyncing(false), 400);
+      }
+    }
+  }, []);
+
+  // 1. Initial Load & Realtime Supabase Postgres Changes Subscription
+  useEffect(() => {
+    let isMounted = true;
+
+    // Auto-sync currentUser latest profile name & role directly from Supabase DB
+    if (currentUser?.username) {
+      supabase
+        .from('profiles')
+        .select('id, name, role, username')
+        .eq('username', currentUser.username)
+        .maybeSingle()
+        .then(({ data: dbProfile }) => {
+          if (dbProfile && dbProfile.name && isMounted) {
             setCurrentUser(prev => {
               const fallbackData = MENTOR_ACCOUNTS[dbProfile.username];
               const groupName = fallbackData?.group || prev?.group_name || null;
@@ -92,27 +140,75 @@ export default function App() {
               return updated;
             });
           }
-        } catch (profErr) {
-          console.warn('Could not sync user profile from DB:', profErr);
-        }
-      }
-
-      const realData = await fetchAllRealData();
-      if (realData && realData.students && realData.students.length > 0) {
-        setAllStudents(realData.students);
-      }
-      if (realData && realData.classes && realData.classes.length > 0) {
-        setAllClasses(realData.classes);
-      }
-      if (realData && realData.notices && realData.notices.length > 0) {
-        setNotices(realData.notices);
-      }
-      if (realData && realData.mentorLogins) {
-        setMentorLogins(realData.mentorLogins);
-      }
+        })
+        .catch(profErr => console.warn('Could not sync user profile from DB:', profErr));
     }
-    loadData();
-  }, []);
+
+    // Initial Fetch
+    refreshData(false);
+
+    // Supabase Realtime Subscription Channel
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rapot_evaluations' },
+        (payload) => {
+          console.log('[Realtime] rapot_evaluations updated:', payload.eventType);
+          if (isMounted) refreshData(false);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
+        (payload) => {
+          console.log('[Realtime] students updated:', payload.eventType);
+          if (isMounted) refreshData(false);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notices' },
+        (payload) => {
+          console.log('[Realtime] notices updated:', payload.eventType);
+          if (isMounted) refreshData(false);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        (payload) => {
+          console.log('[Realtime] profiles updated:', payload.eventType);
+          if (isMounted) refreshData(false);
+        }
+      )
+      .subscribe((status) => {
+        if (!isMounted) return;
+        if (status === 'SUBSCRIBED') {
+          setIsRealtimeConnected(true);
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setIsRealtimeConnected(false);
+        }
+      });
+
+    // Window Focus Listener (Fast sync when returning to tab)
+    const handleFocus = () => {
+      if (isMounted) refreshData(false);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Periodic Background Polling Fallback (every 25 seconds)
+    const intervalId = setInterval(() => {
+      if (isMounted) refreshData(false);
+    }, 25000);
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
+  }, [currentUser?.username, refreshData]);
 
   // 2. Check if logged in user is mentor or admin
   const isMentor = currentUser?.role === 'mentor';
@@ -323,6 +419,9 @@ export default function App() {
         onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
         onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
         onOpenEditProfile={() => setIsEditProfileOpen(true)}
+        isSyncing={isSyncing}
+        isRealtimeConnected={isRealtimeConnected}
+        onRefreshData={refreshData}
       />
 
       {/* Main Page Container with flex-1 to push footer to absolute bottom */}
@@ -343,12 +442,15 @@ export default function App() {
               classes={accessibleClasses}
               notices={notices}
               searchTerm={searchTerm}
-              onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
-              onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
+              onOpenInsert={(s) => handleOpenInsertForSpecificStudent(s || accessibleStudents[0], 'dashboard')}
+              onOpenPdf={(s) => handleSelectStudentForPdf(s || accessibleStudents[0])}
               currentUser={currentUser}
               mentorLogins={mentorLogins}
               onAddNotice={handleAddNotice}
               onDeleteNotice={handleDeleteNotice}
+              isSyncing={isSyncing}
+              isRealtimeConnected={isRealtimeConnected}
+              onRefresh={refreshData}
             />
           )}
 
