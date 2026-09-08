@@ -13,7 +13,7 @@ import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
 import { supabase } from './lib/supabase';
-import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
+import { fetchAllRealData, saveStudentGradeToSupabase, clearStudentGradeInSupabase, updateStudentEmailInSupabase, updateStudentStatusInSupabase, createNoticeInSupabase, deleteNoticeInSupabase } from './lib/dataService';
 import { MENTOR_ACCOUNTS } from './components/LoginPage';
 
 const SESSION_STORAGE_KEY = 'rapot_rawat_maba_session_24h';
@@ -181,6 +181,19 @@ export default function App() {
     }
   };
 
+  const handleUpdateStudentStatus = async (studentId, newStatus) => {
+    // 1. Update state in RAM
+    setAllStudents(prev => prev.map(s => s.id === studentId ? { ...s, studentStatus: newStatus, student_status: newStatus } : s));
+    
+    // 2. Persist to Supabase Database & localStorage
+    const res = await updateStudentStatusInSupabase(studentId, newStatus);
+    if (res.success) {
+      showToast(`Status mahasiswa berhasil diubah ke "${newStatus}"`);
+    } else {
+      showToast('Gagal menyimpan status ke database.');
+    }
+  };
+
   const handleBatchSuccess = (filename) => {
     showToast(`Data rapot dari ${filename} berhasil diimpor!`);
   };
@@ -345,6 +358,7 @@ export default function App() {
               onSelectStudent={handleSelectStudentForPdf}
               onOpenInsertForStudent={handleOpenInsertForSpecificStudent}
               onUpdateStudentEmail={handleUpdateStudentEmail}
+              onUpdateStudentStatus={handleUpdateStudentStatus}
               onClearGrade={handleClearGrade}
             />
           )}

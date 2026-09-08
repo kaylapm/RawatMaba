@@ -1,8 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function StudentsView({ students, onSelectStudent, onOpenInsertForStudent, onUpdateStudentEmail, onClearGrade }) {
+export const STUDENT_STATUS_CONFIG = {
+  'Active': {
+    label: 'Active',
+    bg: 'bg-emerald-50/80 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100/80',
+    activeBg: 'bg-emerald-50/90 border-emerald-300/80 text-emerald-900',
+    dot: 'bg-emerald-500',
+    badgeText: 'text-emerald-800'
+  },
+  'Hilang': {
+    label: 'Hilang',
+    bg: 'bg-rose-50/80 text-rose-800 border-rose-200/80 hover:bg-rose-100/80',
+    activeBg: 'bg-rose-50/90 border-rose-300/80 text-rose-900',
+    dot: 'bg-rose-500',
+    badgeText: 'text-rose-800'
+  },
+  'Pindah': {
+    label: 'Pindah',
+    bg: 'bg-amber-50/80 text-amber-900 border-amber-200/80 hover:bg-amber-100/80',
+    activeBg: 'bg-amber-50/90 border-amber-300/80 text-amber-900',
+    dot: 'bg-amber-500',
+    badgeText: 'text-amber-900'
+  },
+  'Tidak Mengumpulkan': {
+    label: 'Tidak Mengumpulkan',
+    bg: 'bg-violet-50/80 text-violet-900 border-violet-200/80 hover:bg-violet-100/80',
+    activeBg: 'bg-violet-50/90 border-violet-300/80 text-violet-900',
+    dot: 'bg-violet-500',
+    badgeText: 'text-violet-900'
+  }
+};
+
+export default function StudentsView({ 
+  students, 
+  onSelectStudent, 
+  onOpenInsertForStudent, 
+  onUpdateStudentEmail, 
+  onUpdateStudentStatus, 
+  onClearGrade 
+}) {
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterProdi, setFilterProdi] = useState('ALL');
   const [filterGroup, setFilterGroup] = useState('ALL');
   const [filterPredicate, setFilterPredicate] = useState('ALL');
@@ -10,9 +49,17 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
   const [editingEmailId, setEditingEmailId] = useState(null);
   const [tempEmailValue, setTempEmailValue] = useState('');
   const [savingEmailId, setSavingEmailId] = useState(null);
+  const [openStatusMenuId, setOpenStatusMenuId] = useState(null);
   const [studentToClear, setStudentToClear] = useState(null);
   const [isClearing, setIsClearing] = useState(false);
   const itemsPerPage = 9;
+
+  // Close status dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenStatusMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const handleStartEditEmail = (student) => {
     setEditingEmailId(student.id);
@@ -42,19 +89,21 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterProdi, filterGroup, filterPredicate]);
+  }, [search, filterStatus, filterProdi, filterGroup, filterPredicate]);
 
   const filteredStudents = students.filter(student => {
+    const sStatus = student.studentStatus || 'Active';
     const matchesSearch = 
       student.name.toLowerCase().includes(search.toLowerCase()) ||
       student.nim.toLowerCase().includes(search.toLowerCase()) ||
       student.mentor.toLowerCase().includes(search.toLowerCase());
     
+    const matchesStatus = filterStatus === 'ALL' || sStatus === filterStatus;
     const matchesProdi = filterProdi === 'ALL' || student.prodi === filterProdi;
     const matchesGroup = filterGroup === 'ALL' || student.kelompok === filterGroup;
     const matchesPredicate = filterPredicate === 'ALL' || student.predicate === filterPredicate;
 
-    return matchesSearch && matchesProdi && matchesGroup && matchesPredicate;
+    return matchesSearch && matchesStatus && matchesProdi && matchesGroup && matchesPredicate;
   });
 
   // Calculate Pagination (Max 9 Items per Page for 3x3 Grid)
@@ -135,7 +184,7 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
       </div>
 
       {/* ═══ Filter Controls Bar (GSM Styling) ═══ */}
-      <div className="bg-white rounded-3xl p-5 shadow-gsm-card border border-gsm-lilac grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs font-isi">
+      <div className="bg-white rounded-3xl p-5 shadow-gsm-card border border-gsm-lilac grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5 text-xs font-isi">
         
         {/* Search */}
         <div className="relative">
@@ -147,6 +196,21 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
             placeholder="Cari Nama / NRP / Mentor..."
             className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-gsm-blue-main focus:bg-white text-slate-800 font-semibold"
           />
+        </div>
+
+        {/* Status Mahasiswa Filter */}
+        <div>
+          <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-gsm-blue-main focus:bg-white text-slate-700 font-semibold cursor-pointer"
+          >
+            <option value="ALL">Semua Status Mahasiswa</option>
+            <option value="Active">Active</option>
+            <option value="Hilang">Hilang</option>
+            <option value="Pindah">Pindah</option>
+            <option value="Tidak Mengumpulkan">Tidak Mengumpulkan</option>
+          </select>
         </div>
 
         {/* Prodi Filter */}
@@ -197,24 +261,92 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
 
       {/* ═══ Student Cards Grid (3x3 Layout) ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paginatedStudents.map((student) => (
-          <div 
-            key={student.id}
-            className="bg-white rounded-3xl p-6 shadow-gsm-card border border-gsm-lilac hover:shadow-gsm-hover transition-all duration-300 flex flex-col justify-between group"
-          >
+        {paginatedStudents.map((student) => {
+          const currentStatus = student.studentStatus || 'Active';
+          const statusCfg = STUDENT_STATUS_CONFIG[currentStatus] || STUDENT_STATUS_CONFIG['Active'];
+          const isStatusMenuOpen = openStatusMenuId === student.id;
+
+          return (
+            <div 
+              key={student.id}
+              className="bg-white rounded-3xl p-6 shadow-gsm-card border border-gsm-lilac hover:shadow-gsm-hover transition-all duration-300 flex flex-col justify-between group"
+            >
               <div>
-                {/* Top Profile Header */}
-                <div className="flex items-center gap-3.5 mb-4">
-                  <div className="w-11 h-11 rounded-2xl bg-gsm-blue-gradient text-white flex items-center justify-center font-bold text-xs shadow-md shadow-gsm-blue-main/20 flex-shrink-0 font-sans-code">
-                    {getInitials(student.name)}
+                {/* Top Profile Header with Status Chip */}
+                <div className="flex items-start justify-between gap-2.5 mb-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-11 h-11 rounded-2xl bg-gsm-blue-gradient text-white flex items-center justify-center font-bold text-xs shadow-md shadow-gsm-blue-main/20 flex-shrink-0 font-sans-code">
+                      {getInitials(student.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-serif-judul font-bold text-slate-900 text-sm truncate group-hover:text-gsm-blue-main transition-colors">
+                        {student.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 font-sans-code font-bold mt-0.5">
+                        NRP: {student.nim}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-serif-judul font-bold text-slate-900 text-sm truncate group-hover:text-gsm-blue-main transition-colors">
-                      {student.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 font-sans-code font-bold mt-0.5">
-                      NRP: {student.nim}
-                    </p>
+
+                  {/* Status Mahasiswa Chip (Interactive Popover) */}
+                  <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenStatusMenuId(isStatusMenuOpen ? null : student.id);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-sans-code font-semibold border backdrop-blur-md transition-all duration-150 shadow-xs cursor-pointer select-none active:scale-95 ${statusCfg.bg}`}
+                      title="Klik untuk mengubah status mahasiswa"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
+                      <span>{statusCfg.label}</span>
+                      <span className={`material-symbols-outlined text-[13px] text-slate-500 transition-transform duration-200 ${isStatusMenuOpen ? 'rotate-180' : ''}`}>
+                        expand_more
+                      </span>
+                    </button>
+
+                    {/* Popover Dropdown Menu with Clean Glassmorphism */}
+                    {isStatusMenuOpen && (
+                      <div 
+                        className="absolute right-0 top-full mt-1.5 w-48 bg-white/95 backdrop-blur-2xl rounded-2xl shadow-xl border border-slate-200/80 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 font-isi divide-y divide-slate-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-2.5 py-1 text-[10px] font-sans-code font-semibold text-slate-400 uppercase tracking-wider">
+                          Status Mahasiswa
+                        </div>
+                        <div className="pt-1 space-y-0.5">
+                          {Object.entries(STUDENT_STATUS_CONFIG).map(([statusKey, opt]) => {
+                            const isSelected = currentStatus === statusKey;
+                            return (
+                              <button
+                                key={statusKey}
+                                type="button"
+                                onClick={() => {
+                                  if (onUpdateStudentStatus) {
+                                    onUpdateStudentStatus(student.id, statusKey);
+                                  }
+                                  setOpenStatusMenuId(null);
+                                }}
+                                className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                                  isSelected 
+                                    ? `${opt.activeBg} font-semibold shadow-xs` 
+                                    : 'hover:bg-slate-100/70 text-slate-700 font-medium'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-2 h-2 rounded-full ${opt.dot} flex-shrink-0`}></span>
+                                  <span className="text-[11px] truncate">{opt.label}</span>
+                                </div>
+                                {isSelected && (
+                                  <span className="material-symbols-outlined text-[14px] text-gsm-blue-main font-bold">check</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -330,7 +462,8 @@ export default function StudentsView({ students, onSelectStudent, onOpenInsertFo
                 )}
               </div>
             </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ═══ Clean Sliding Window Pagination Controls (Max 5 Page Buttons) ═══ */}

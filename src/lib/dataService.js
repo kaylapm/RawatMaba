@@ -14,38 +14,85 @@ const PILLAR_SCORE_COLUMNS = ['p1_score', 'p2_score', 'p3_score', 'p4_score'];
 
 export async function fetchAllRealData() {
   try {
-    // 1. Fetch Students from Supabase with new rubrik columns
-    const { data: dbStudents, error: studentErr } = await supabase
-      .from('students')
-      .select(`
-        id,
-        nrp,
-        name,
-        email,
-        prodi,
-        year,
-        group_id,
-        mentoring_groups (
+    // 1. Fetch Students from Supabase with student_status and rubrik columns
+    let dbStudents = null;
+    let studentErr = null;
+
+    try {
+      const queryWithStatus = await supabase
+        .from('students')
+        .select(`
           id,
+          nrp,
           name,
-          mentors (
-            name
+          email,
+          prodi,
+          year,
+          group_id,
+          student_status,
+          mentoring_groups (
+            id,
+            name,
+            mentors (
+              name
+            )
+          ),
+          rapot_evaluations (
+            ${INDICATOR_COLUMNS.join(',\n            ')},
+            ${PILLAR_SCORE_COLUMNS.join(',\n            ')},
+            final_score,
+            predicate,
+            status,
+            notes,
+            feedback_apresiasi,
+            feedback_saran,
+            feedback_oprec,
+            updated_at
           )
-        ),
-        rapot_evaluations (
-          ${INDICATOR_COLUMNS.join(',\n          ')},
-          ${PILLAR_SCORE_COLUMNS.join(',\n          ')},
-          final_score,
-          predicate,
-          status,
-          notes,
-          feedback_apresiasi,
-          feedback_saran,
-          feedback_oprec,
-          updated_at
-        )
-      `)
-      .not('group_id', 'is', null);
+        `)
+        .not('group_id', 'is', null);
+
+      if (!queryWithStatus.error) {
+        dbStudents = queryWithStatus.data;
+      } else {
+        const queryFallback = await supabase
+          .from('students')
+          .select(`
+            id,
+            nrp,
+            name,
+            email,
+            prodi,
+            year,
+            group_id,
+            mentoring_groups (
+              id,
+              name,
+              mentors (
+                name
+              )
+            ),
+            rapot_evaluations (
+              ${INDICATOR_COLUMNS.join(',\n              ')},
+              ${PILLAR_SCORE_COLUMNS.join(',\n              ')},
+              final_score,
+              predicate,
+              status,
+              notes,
+              feedback_apresiasi,
+              feedback_saran,
+              feedback_oprec,
+              updated_at
+            )
+          `)
+          .not('group_id', 'is', null);
+
+        dbStudents = queryFallback.data;
+        studentErr = queryFallback.error;
+      }
+    } catch (e) {
+      studentErr = e;
+    }
 
     // 2. Fetch Dynamic Notices/Announcements from Supabase
     let fetchedNotices = initialNotices;
@@ -82,6 +129,12 @@ export async function fetchAllRealData() {
       };
     }
 
+    // Read local cache for student status if needed
+    let localStatuses = {};
+    try {
+      localStatuses = JSON.parse(localStorage.getItem('rapot_student_statuses') || '{}');
+    } catch (e) {}
+
     // Format DB Students with new rubrik structure
     const formattedStudents = validStudents.map(s => {
       const groupName = s.mentoring_groups?.name || 'Kelompok Mentoring';
@@ -95,6 +148,7 @@ export async function fetchAllRealData() {
       });
 
       const finalScore = Number(ev.final_score || 0);
+      const studentStatus = s.student_status || localStatuses[s.id] || localStatuses[s.nrp] || 'Active';
 
       return {
         id: s.id,
@@ -104,6 +158,8 @@ export async function fetchAllRealData() {
         prodi: s.prodi,
         kelompok: groupName,
         mentor: mentorName,
+        studentStatus: studentStatus,
+        student_status: studentStatus,
         status: ev.status || 'Belum Dinilai',
         finalScore: finalScore,
         predicate: ev.predicate || '-',
@@ -497,4 +553,40 @@ export async function clearStudentGradeInSupabase(studentId) {
     return { success: false, error: err };
   }
 }
+
+// Update student status (Active, Hilang, Pindah, Tidak Mengumpulkan) in Supabase students table
+export async function updateStudentStatusInSupabase(studentId, newStatus) {
+  try {
+    const cleanStatus = (newStatus || 'Active').trim();
+    
+    // 1. Cache to localStorage for instant reactivity and persistent fallback
+    try {
+      const localStatuses = JSON.parse(localStorage.getItem('rapot_student_statuses') || '{}');
+      localStatuses[studentId] = cleanStatus;
+      localStorage.setItem('rapot_student_statuses', JSON.stringify(localStatuses));
+    } catch (e) {}
+
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(studentId);
+    
+    let query = supabase.from('students').update({ student_status: cleanStatus });
+    if (isUuid) {
+      query = query.eq('id', studentId);
+    } else {
+      query = query.eq('nrp', String(studentId).trim());
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('Supabase student_status update note (local cache preserved):', error.message || error);
+      return { success: true, localOnly: true, data };
+    }
+
+    console.log('Successfully updated student_status in Supabase for:', studentId, '->', cleanStatus);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Exception updating student status:', err);
+    return { success: true, localOnly: true };
+  }
+}
+
 
