@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // ═══════════════════════════════════════════════════════════════
@@ -339,6 +339,9 @@ export default function InsertGradesModal({
   const [isSaving, setIsSaving] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
+  const prevInitialStudentIdRef = useRef(null);
+  const isInitializedRef = useRef(false);
+
   const [scores, setScores] = useState(() => {
     const init = {};
     PILLARS.forEach(p => p.indicators.forEach(ind => { init[ind.key] = 0; }));
@@ -346,8 +349,20 @@ export default function InsertGradesModal({
   });
 
   useEffect(() => {
-    if (isOpen || isFullScreen) {
-      const targetId = initialStudentId || students[0]?.id || '';
+    const isModalActive = isOpen || isFullScreen;
+    if (!isModalActive) {
+      isInitializedRef.current = false;
+      prevInitialStudentIdRef.current = null;
+      return;
+    }
+
+    const targetId = initialStudentId || students[0]?.id || '';
+    if (!targetId) return;
+
+    // Only load initial data if modal was just opened OR initialStudentId changed explicitly from parent
+    if (!isInitializedRef.current || (initialStudentId && prevInitialStudentIdRef.current !== initialStudentId)) {
+      prevInitialStudentIdRef.current = initialStudentId;
+      isInitializedRef.current = true;
       setSelectedStudentId(targetId);
       const student = students.find(s => s.id === targetId) || students[0];
       if (student) {

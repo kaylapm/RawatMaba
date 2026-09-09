@@ -472,6 +472,7 @@ export default function App() {
               onClose={() => { setActiveTab(insertReturnTab); setInsertTargetStudent(null); }}
               students={accessibleStudents}
               onSaveGrade={handleSaveGrade}
+              onClearGrade={handleClearGrade}
               initialStudentId={insertTargetStudent?.id || null}
             />
           )}
