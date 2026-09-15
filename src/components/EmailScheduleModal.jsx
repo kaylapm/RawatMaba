@@ -368,11 +368,9 @@ export default function EmailScheduleModal({
           >
             <span className="material-symbols-outlined text-base">groups</span>
             <span>Jadwal Per-Mentor</span>
-            {Object.keys(draft.mentorOverrides || {}).length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-md bg-blue-100 text-[#003CEC] text-[10px] font-sans-code font-bold">
-                {Object.keys(draft.mentorOverrides).length}
-              </span>
-            )}
+            <span className="px-1.5 py-0.2 rounded-md bg-blue-100 text-[#003CEC] text-[10px] font-sans-code font-bold">
+              {mentorList.length}
+            </span>
           </button>
         </div>
 
