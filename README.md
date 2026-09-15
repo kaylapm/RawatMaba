@@ -373,6 +373,6 @@ Tombol dinonaktifkan jika waktu pengiriman belum memasuki rentang jadwal aktif y
 
 ## Kontributor & Lisensi
 
-Dikembangkan untuk kesuksesan kaderisasi mahasiswa baru **Departemen Human Resource Development (HRD)**, **Himpunan Mahasiswa Sistem Informasi (HMSI)** Kabinet Pilaraksi, Institut Teknologi Sepuluh Nopember (ITS).
+Dikembangkan untuk kesuksesan program kerja rawat maba **Departemen Human Resource Development (HRD)**, **Himpunan Mahasiswa Sistem Informasi (HMSI)** Kabinet Pilaraksi, Institut Teknologi Sepuluh Nopember (ITS).
 
 © 2026 **Departemen HRD HMSI**. All rights reserved.
