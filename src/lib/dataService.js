@@ -677,10 +677,10 @@ export const SUPER_ADMIN_DUMMY_STUDENT = {
     p4_keaktifan_diskusi: 5, p4_kedisiplinan: 5, p4_kolaborasi_kelompok: 4, p4_keterbukaan_feedback: 5,
   },
   pillarScores: {
-    p1_score: 88.0,
-    p2_score: 86.6,
-    p3_score: 92.0,
-    p4_score: 95.0
+    p1_score: 26.4,
+    p2_score: 17.4,
+    p3_score: 32.4,
+    p4_score: 14.4
   },
   notes: 'Peserta dummy untuk pengujian rapot, fitur email, dan unduh PDF oleh Super Admin.',
   feedback_apresiasi: 'Menunjukkan pemahaman materi yang sangat baik dan aktif dalam seluruh sesi simulasi.',

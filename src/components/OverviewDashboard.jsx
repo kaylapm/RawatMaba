@@ -252,15 +252,26 @@ export default function OverviewDashboard({
   // STATISTIK ANALITIK 4 PILAR GSM (Average, Min, Max)
   // ═══════════════════════════════════════════════════════════════
   const pillarStats = useMemo(() => {
-    const dataset = gradedStudents.length > 0 ? gradedStudents : [];
+    // Exclude dummy student records from overall cohort statistics
+    const dataset = gradedStudents.filter(s => !s.isDummy && s.nim !== '5026249999' && s.id !== '30000000-0000-0000-0000-000000000999');
 
     return PILLARS.map(pillar => {
       const scoresList = dataset.map(s => {
-        if (s.pillarScores && s.pillarScores[`${pillar.id}_score`] !== undefined && s.pillarScores[`${pillar.id}_score`] !== null) {
-          const val = Number(s.pillarScores[`${pillar.id}_score`]);
-          if (!isNaN(val)) return val;
+        // Recalculate accurately from indicators if scores object exists
+        if (s.scores && Object.keys(s.scores).length > 0) {
+          return calcPillarScore(pillar, s.scores);
         }
-        return calcPillarScore(pillar, s.scores || {});
+        if (s.pillarScores && s.pillarScores[`${pillar.id}_score`] !== undefined && s.pillarScores[`${pillar.id}_score`] !== null) {
+          let val = Number(s.pillarScores[`${pillar.id}_score`]);
+          if (!isNaN(val)) {
+            // Safety normalize if legacy raw 0-100 percentage was saved
+            if (val > pillar.bobot) {
+              val = Math.round(((val / 100) * pillar.bobot) * 10) / 10;
+            }
+            return Math.min(val, pillar.bobot);
+          }
+        }
+        return 0;
       });
 
       if (scoresList.length === 0) {
@@ -283,9 +294,9 @@ export default function OverviewDashboard({
       return {
         ...pillar,
         avgScore: Math.round(avg * 10) / 10,
-        avgPct: avgPct,
-        minScore: Math.round(min * 10) / 10,
-        maxScore: Math.round(max * 10) / 10,
+        avgPct: Math.min(100, avgPct),
+        minScore: Math.round(Math.min(min, pillar.bobot) * 10) / 10,
+        maxScore: Math.round(Math.min(max, pillar.bobot) * 10) / 10,
         sampleCount: scoresList.length
       };
     });
@@ -641,11 +652,19 @@ export default function OverviewDashboard({
 
                 return (
                   <div key={pillar.id} className="flex-1 flex flex-col items-center group max-w-[58px] sm:max-w-[75px] md:max-w-[90px] min-w-0">
-                    <span className="text-[10px] sm:text-[11px] font-bold font-sans-code text-slate-800 mb-1.5 opacity-90 group-hover:scale-110 transition-all truncate">
-                      {pillar.sampleCount > 0 ? `${pillar.avgScore} pt` : '0 pt'}
-                    </span>
+                    <div className="flex flex-col items-center mb-1.5 group-hover:scale-105 transition-all text-center">
+                      <span className="text-[11px] sm:text-xs font-bold font-sans-code text-slate-900 leading-none">
+                        {pillar.sampleCount > 0 ? `${pillar.avgPct}%` : '0%'}
+                      </span>
+                      <span className="text-[9px] sm:text-[10px] font-medium font-sans-code text-slate-500 mt-0.5 whitespace-nowrap">
+                        {pillar.sampleCount > 0 ? `${pillar.avgScore} pt` : '0 pt'}
+                      </span>
+                    </div>
 
-                    <div className="w-full bg-slate-100 rounded-t-xl sm:rounded-t-2xl h-[130px] sm:h-[160px] flex items-end p-0.5 sm:p-1 shadow-inner relative overflow-hidden border border-slate-200">
+                    <div 
+                      className="w-full bg-slate-100 rounded-t-xl sm:rounded-t-2xl h-[130px] sm:h-[160px] flex items-end p-0.5 sm:p-1 shadow-inner relative overflow-hidden border border-slate-200"
+                      title={`${pillar.title}: Rata-rata ${pillar.avgScore} dari ${pillar.bobot} Poin (Capaian ${pillar.avgPct}%)`}
+                    >
                       <div 
                         className="w-full rounded-t-lg sm:rounded-t-xl transition-all duration-700 relative group-hover:brightness-110"
                         style={{ 
@@ -663,6 +682,9 @@ export default function OverviewDashboard({
                     </span>
                     <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code truncate w-full text-center block">
                       {pillar.shortTitle}
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code font-medium">
+                      Maks: {pillar.bobot}pt
                     </span>
                   </div>
                 );

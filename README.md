@@ -1,4 +1,4 @@
-# 🎓 Sistem Evaluasi & Rapot Rawat Maba (Mentoring Maba 2026)
+# Sistem Evaluasi & Rapot Rawat Maba (Mentoring Maba 2026)
 
 <div align="center">
 
@@ -22,30 +22,30 @@
 
 ---
 
-## 📑 Daftar Isi
+## Daftar Isi
 
-- [🌟 Tentang Proyek](#-tentang-proyek)
-- [✨ Fitur-Fitur Unggulan](#-fitur-fitur-unggulan)
-- [🖼️ Galeri Visual Dokumen Rapot (6 Halaman)](#️-galeri-visual-dokumen-rapot-6-halaman)
-- [🏗️ Arsitektur & Alur Kerja Sistem](#️-arsitektur--alur-kerja-sistem)
-- [📊 Rubrik & Formula Penilaian 4 Pilar](#-rubrik--formula-penilaian-4-pilar)
-- [👥 Matriks Hak Akses & Peran Pengguna](#-matriks-hak-akses--peran-pengguna)
-- [💻 Teknologi yang Digunakan](#-teknologi-yang-digunakan)
-- [🚀 Panduan Instalasi & Menjalankan Lokal](#-panduan-instalasi--menjalankan-lokal)
-- [🗄️ Skema Database Supabase & Migrasi](#️-skema-database-supabase--migrasi)
-- [✉️ Konfigurasi Supabase Edge Function (Kirim Email)](#️-konfigurasi-supabase-edge-function-kirim-email)
-- [⏰ Manajemen Jadwal Pengiriman Email](#-manajemen-jadwal-pengiriman-email)
-- [📁 Struktur Direktori Repositori](#-struktur-direktori-repositori)
-- [❓ FAQ & Troubleshooting](#-faq--troubleshooting)
-- [🤝 Kontributor & Lisensi](#-kontributor--lisensi)
+- [Tentang Proyek](#tentang-proyek)
+- [Fitur Utama](#fitur-utama)
+- [Galeri Visual Dokumen Rapot (6 Halaman)](#galeri-visual-dokumen-rapot-6-halaman)
+- [Arsitektur & Alur Kerja Sistem](#arsitektur--alur-kerja-sistem)
+- [Rubrik & Formula Penilaian 4 Pilar](#rubrik--formula-penilaian-4-pilar)
+- [Matriks Hak Akses & Peran Pengguna](#matriks-hak-akses--peran-pengguna)
+- [Teknologi yang Digunakan](#teknologi-yang-digunakan)
+- [Panduan Instalasi & Menjalankan Lokal](#panduan-instalasi--menjalankan-lokal)
+- [Skema Database Supabase & Migrasi](#skema-database-supabase--migrasi)
+- [Konfigurasi Supabase Edge Function (Kirim Email)](#konfigurasi-supabase-edge-function-kirim-email)
+- [Manajemen Jadwal Pengiriman Email](#manajemen-jadwal-pengiriman-email)
+- [Struktur Direktori Repositori](#struktur-direktori-repositori)
+- [FAQ & Troubleshooting](#faq--troubleshooting)
+- [Kontributor & Lisensi](#kontributor--lisensi)
 
 ---
 
-## 🌟 Tentang Proyek
+## Tentang Proyek
 
 **Rapot Rawat Maba** adalah platform terintegrasi yang dirancang khusus oleh dan untuk Departemen HRD HMSI guna memfasilitasi Mentor Kelompok dan Koordinator Panitia dalam mengevaluasi perkembangan seluruh mahasiswa baru angkatan 2026 selama program mentoring berlangsung.
 
-Platform ini mentransformasi seluruh proses rekapitulasi yang sebelumnya manual dan rawan inkonsistensi menjadi alur digital yang seamless:
+Platform ini mentransformasi seluruh proses rekapitulasi manual menjadi alur digital terpadu:
 1. **Input Nilai Terstandar**: Mentor menginput skor berdasarkan 17 indikator objektif pada 4 pilar kompetensi.
 2. **Kalkulasi Otomatis**: Sistem langsung mengkalkulasi skor pilar, nilai akhir, predikat kesiapan oprec, serta peringkat (`Rank #`) secara dinamis terhadap seluruh mahasiswa baru se-angkatan 2026.
 3. **Penerbitan Dokumen Resmi**: Menghasilkan dokumen Rapot PDF 6 halaman berstandar A4 resolusi tinggi dengan layout visual resmi HMSI.
@@ -53,55 +53,55 @@ Platform ini mentransformasi seluruh proses rekapitulasi yang sebelumnya manual 
 
 ---
 
-## ✨ Fitur-Fitur Unggulan
+## Fitur Utama
 
-### 🎨 1. Desain Glassmorphic Modern & Elegan
-- Palet warna eksklusif bernuansa Indigo & GSM Blue dengan *backdrop blur*, *subtle glowing borders*, dan transisi micro-animation yang responsif.
+### 1. Desain Glassmorphic Modern & Elegan
+- Palet warna bernuansa Indigo & GSM Blue dengan *backdrop blur*, *subtle glowing borders*, dan transisi micro-animation yang responsif.
 - Tipografi modern dan tata letak informasi yang bersih tanpa elemen visual yang berlebihan.
 
-### 📊 2. Dashboard Overview & Realtime KPI
+### 2. Dashboard Overview & Realtime KPI
 - Statistik instan: Total Mahasiswa, Mahasiswa Dinilai vs Belum Dinilai, Total Kelompok, dan Progres Keseluruhan.
 - **Modal Rekapitulasi Mahasiswa Pending**: Memudahkan mentor dan panitia melihat mahasiswa yang belum selesai dinilai lengkap dengan badge status keaktifan (`Active`, `Hilang`, `Pindah`, `Tidak Mengumpulkan`).
-- Pencarian cerdas instan berdasarkan nama, NRP, maupun kelompok.
+- Pencarian instan berdasarkan nama, NRP, maupun kelompok.
 
-### 📝 3. Formulir Penilaian 4 Pilar & 17 Indikator Terpadu
+### 3. Formulir Penilaian 4 Pilar & 17 Indikator Terpadu
 - Kontrol input nilai interaktif dengan batas validasi aman (0 – 100).
 - Input feedback naratif mentor yang komprehensif:
-  - 🌟 **Apresiasi & Kelebihan Utama**
-  - 📈 **Saran & Area Pengembangan**
-  - 🎯 **Rekomendasi Divisi Oprec / Kepanitiaan**
+  - **Apresiasi & Kelebihan Utama**
+  - **Saran & Area Pengembangan**
+  - **Rekomendasi Divisi Oprec / Kepanitiaan**
 - Sinkronisasi instan ke database Supabase dengan sistem *optimistic update* dan *debounce auto-save*.
 
-### 🏆 4. Kalkulasi Ranking Se-Angkatan 2026 (Global Rank)
+### 4. Kalkulasi Ranking Se-Angkatan 2026 (Global Rank)
 - Peringkat dihitung secara transparan dan dinamis lintas seluruh kelompok angkatan 2026.
 - Akun pengujian / dummy data secara otomatis dikecualikan dari perhitungan peringkat agar integritas peringkat mahasiswa tetap terjaga.
 
-### 📄 5. Generator Rapot PDF 6 Halaman (Zero Cutoff Engine)
+### 5. Generator Rapot PDF 6 Halaman (Zero Cutoff Engine)
 - Menggunakan konversi vector canvas beresolusi tinggi (794×1123 px standard A4 @ 96-300 DPI).
 - Merender 6 halaman dokumen rapot lengkap tanpa terpotong (cover, kata sambutan KAHIMA, sambutan KAWADEP & PIC, lembar nilai detail, lembar feedback, serta rekap penutup & ranking).
 - Dilengkapi live progress percentage generator (0% – 100%).
 
-### 📧 6. Distribusi Email Otomatis & Standby Notice Modal
+### 6. Distribusi Email Otomatis & Standby Notice Modal
 - Pengiriman email dengan lampiran 1 file PDF rapot asli langsung ke mahasiswa baru.
 - Dilengkapi **Standby Warning Modal** dengan backdrop glassmorphic yang mengingatkan mentor untuk tetap berada di tab browser selama proses rendering PDF dan transmisi email berlangsung.
 - Tampilan live progress percentage pengiriman dan tombol *"Tutup & Selesai"* setelah email sukses terkirim.
 
-### ⏰ 7. Sistem Penjadwalan Email (Super Admin Controls)
+### 7. Sistem Penjadwalan Email (Super Admin Controls)
 - Super Admin dapat menentukan jendela waktu aktif tombol kirim email secara global maupun override per mentor tertentu.
 - Mentor mendapatkan popup notifikasi jadwal email otomatis saat login jika waktu pengiriman belum dibuka.
 - Super Admin memiliki hak bypass penuh untuk pengujian kapan saja.
 
-### 🧪 8. Akun Dummy Khusus Super Admin
+### 8. Akun Dummy Khusus Super Admin
 - Record mahasiswa khusus (`NRP: 5026249999`) untuk uji coba input nilai, ekspor PDF, dan uji kirim email tanpa mengotori data mahasiswa asli.
 - Terisolasi sepenuhnya dari pandangan mentor kelompok biasa.
 
-### 🔒 9. Sesi Ketat 1x24 Jam (Watchdog Interval)
+### 9. Sesi Ketat 1x24 Jam (Watchdog Interval)
 - Keamanan sesi login dengan masa berlaku 1x24 jam.
 - Dilengkapi background heartbeat watchdog yang memeriksa keabsahan timestamp `expiresAt` secara realtime dan otomatis melakukan logout jika sesi telah habis.
 
 ---
 
-## 🖼️ Galeri Visual Dokumen Rapot (6 Halaman)
+## Galeri Visual Dokumen Rapot (6 Halaman)
 
 Dokumen rapot yang dihasilkan tersusun atas 6 halaman A4 portrait berurutan dengan desain visual resmi HRD HMSI:
 
@@ -117,7 +117,7 @@ Dokumen rapot yang dihasilkan tersusun atas 6 halaman A4 portrait berurutan deng
 
 ---
 
-## 🏗️ Arsitektur & Alur Kerja Sistem
+## Arsitektur & Alur Kerja Sistem
 
 ```mermaid
 flowchart TD
@@ -146,7 +146,7 @@ flowchart TD
 
 ---
 
-## 📊 Rubrik & Formula Penilaian 4 Pilar
+## Rubrik & Formula Penilaian 4 Pilar
 
 Sistem penilaian menggunakan pembobotan terstandarisasi untuk menjamin objektivitas evaluasi:
 
@@ -174,21 +174,21 @@ Nilai Akhir = (Skor Pilar 1 × 25%) + (Skor Pilar 2 × 25%) + (Skor Pilar 3 × 3
 
 ---
 
-## 👥 Matriks Hak Akses & Peran Pengguna
+## Matriks Hak Akses & Peran Pengguna
 
 | Fitur / Kemampuan | Super Admin (`webdev`) | Mentor Kelompok |
 | :--- | :---: | :---: |
-| **Melihat & Menilai Seluruh Mahasiswa** | ✅ Ya (Semua Kelompok) | ❌ Hanya Kelompok Sendiri |
-| **Akses Akun Dummy Pengujian (`NRP 5026249999`)** | ✅ Ya | ❌ Tersembunyi |
-| **Atur Jadwal Pengiriman Email (Global & Per Mentor)** | ✅ Ya | ❌ Tidak |
-| **Bypass Jadwal Email (Kirim Kapan Saja)** | ✅ Ya | ❌ Mengikuti Jadwal |
-| **Popup Pengingat Jadwal Saat Login** | ❌ Tidak | ✅ Ya (Otomatis) |
-| **Ubah Profil & Nama Mentor** | ✅ Ya | ✅ Ya |
-| **Unduh PDF & Kirim Email Rapot** | ✅ Ya | ✅ Ya (Sesuai Jadwal) |
+| **Melihat & Menilai Seluruh Mahasiswa** | Ya (Semua Kelompok) | Hanya Kelompok Sendiri |
+| **Akses Akun Dummy Pengujian (`NRP 5026249999`)** | Ya | Tersembunyi |
+| **Atur Jadwal Pengiriman Email (Global & Per Mentor)** | Ya | Tidak |
+| **Bypass Jadwal Email (Kirim Kapan Saja)** | Ya | Mengikuti Jadwal |
+| **Popup Pengingat Jadwal Saat Login** | Tidak | Ya (Otomatis) |
+| **Ubah Profil & Nama Mentor** | Ya | Ya |
+| **Unduh PDF & Kirim Email Rapot** | Ya | Ya (Sesuai Jadwal) |
 
 ---
 
-## 💻 Teknologi yang Digunakan
+## Teknologi yang Digunakan
 
 ### Frontend
 - **Framework**: [React 19.2](https://react.dev/) + [Vite 6.4](https://vitejs.dev/)
@@ -203,7 +203,7 @@ Nilai Akhir = (Skor Pilar 1 × 25%) + (Skor Pilar 2 × 25%) + (Skor Pilar 3 × 3
 
 ---
 
-## 🚀 Panduan Instalasi & Menjalankan Lokal
+## Panduan Instalasi & Menjalankan Lokal
 
 ### 1. Prasyarat Sistem
 Pastikan perangkat Anda telah terinstall:
@@ -247,7 +247,7 @@ npm run preview
 
 ---
 
-## 🗄️ Skema Database Supabase & Migrasi
+## Skema Database Supabase & Migrasi
 
 Jalankan script SQL migrasi yang tersedia di folder `supabase/migrations/` pada **Supabase SQL Editor**:
 
@@ -264,7 +264,7 @@ Jalankan script SQL migrasi yang tersedia di folder `supabase/migrations/` pada 
 
 ---
 
-## ✉️ Konfigurasi Supabase Edge Function (Kirim Email)
+## Konfigurasi Supabase Edge Function (Kirim Email)
 
 Fungsi `send-rapot-email` bertanggung jawab menerima payload dokumen PDF dari client dan mengirimkannya ke email mahasiswa via Gmail SMTP.
 
@@ -287,7 +287,7 @@ npx supabase functions deploy send-rapot-email --project-ref your-project-ref
 
 ---
 
-## ⏰ Manajemen Jadwal Pengiriman Email
+## Manajemen Jadwal Pengiriman Email
 
 Untuk mencegah email terkirim sebelum seluruh penilaian tuntas, Super Admin dapat mengelola jadwal pengiriman melalui menu **Jadwal Pengiriman Email** (ikon jam di profil):
 
@@ -302,7 +302,7 @@ Untuk mencegah email terkirim sebelum seluruh penilaian tuntas, Super Admin dapa
 
 ---
 
-## 📁 Struktur Direktori Repositori
+## Struktur Direktori Repositori
 
 ```
 rapot-rawat-maba/
@@ -346,12 +346,12 @@ rapot-rawat-maba/
 
 ---
 
-## ❓ FAQ & Troubleshooting
+## FAQ & Troubleshooting
 
 <details>
 <summary><b>1. Mengapa proses pengiriman email berhenti saat saya berpindah tab / aplikasi?</b></summary>
 <p>
-Browser modern menghemat daya dengan melakukan *throttling* (pembatasan) rendering DOM dan <code>requestAnimationFrame</code> pada tab latar belakang. Oleh karena itu, aplikasi menampilkan pop-up standby notice yang menganjurkan Anda untuk tetap membuka tab aktif hingga indikator proses mencapai 100% dan status berubah menjadi <i>"Terkirim"</i>.
+Browser modern menghemat daya dengan melakukan <i>throttling</i> (pembatasan) rendering DOM dan <code>requestAnimationFrame</code> pada tab latar belakang. Oleh karena itu, aplikasi menampilkan pop-up standby notice yang menganjurkan Anda untuk tetap membuka tab aktif hingga indikator proses mencapai 100% dan status berubah menjadi <i>"Terkirim"</i>.
 </p>
 </details>
 
@@ -371,8 +371,8 @@ Tombol dinonaktifkan jika waktu pengiriman belum memasuki rentang jadwal aktif y
 
 ---
 
-## 🤝 Kontributor & Lisensi
+## Kontributor & Lisensi
 
-Dikembangkan dengan dedikasi untuk kesuksesan kaderisasi mahasiswa baru **Departemen Human Resource Development (HRD)**, **Himpunan Mahasiswa Sistem Informasi (HMSI)** Kabinet Pilaraksi, Institut Teknologi Sepuluh Nopember (ITS).
+Dikembangkan untuk kesuksesan kaderisasi mahasiswa baru **Departemen Human Resource Development (HRD)**, **Himpunan Mahasiswa Sistem Informasi (HMSI)** Kabinet Pilaraksi, Institut Teknologi Sepuluh Nopember (ITS).
 
 © 2026 **Departemen HRD HMSI**. All rights reserved.
