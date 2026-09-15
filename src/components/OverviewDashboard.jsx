@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getMentorLastLogin, isStudentReadyToPrint } from '../lib/dataService';
 import { PILLARS, calcPillarScore } from './InsertGradesModal';
+import { STUDENT_STATUS_CONFIG } from './StudentsView';
 
 function formatLastLogin(timestampISO) {
   if (!timestampISO) return 'Never';
@@ -1180,6 +1181,8 @@ export default function OverviewDashboard({
                     const isGraded = kpiModalType === 'GRADED';
                     const hasScore = Number(student.finalScore || 0) > 0 || Object.values(student.scores || {}).some(v => Number(v) > 0);
                     const initials = (student.name || 'MB').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                    const stStatus = student.studentStatus || student.student_status || 'Active';
+                    const statusConf = STUDENT_STATUS_CONFIG[stStatus] || STUDENT_STATUS_CONFIG['Active'];
 
                     return (
                       <div 
@@ -1201,30 +1204,39 @@ export default function OverviewDashboard({
                             </div>
                           </div>
 
-                          {/* Score or Status Badge */}
-                          {isGraded ? (
-                            <div className="text-right flex-shrink-0">
-                              <span className="font-coolvetica font-bold text-base text-gsm-blue-main block leading-tight">
-                                {student.finalScore} <span className="text-[10px] text-slate-400 font-normal">/100</span>
-                              </span>
-                              <span className="inline-block bg-blue-50 text-gsm-blue-main border border-blue-200 text-[9px] font-bold font-sans-code px-2 py-0.5 rounded-full mt-0.5">
-                                {student.predicate || 'Siap Oprec'}
-                              </span>
-                            </div>
-                          ) : hasScore ? (
-                            <div className="text-right flex-shrink-0">
-                              <span className="font-coolvetica font-bold text-sm text-amber-600 block leading-tight">
-                                {student.finalScore || 0} <span className="text-[10px] text-slate-400 font-normal">/100</span>
-                              </span>
-                              <span className="inline-block bg-amber-50 text-amber-700 border border-amber-300 text-[9px] font-bold font-sans-code px-2 py-0.5 rounded-full mt-0.5">
-                                Belum Ada Pesan
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold font-sans-code px-2.5 py-1 rounded-full flex-shrink-0">
-                              Belum Dinilai
+                          {/* Student Status & Evaluation Badges */}
+                          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                            {/* Student Status Badge (Active, Hilang, Pindah, Tidak Mengumpulkan) */}
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-sans-code font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusConf.bg}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${statusConf.dot}`} />
+                              <span>{statusConf.label}</span>
                             </span>
-                          )}
+
+                            {/* Evaluation Status Badge */}
+                            {isGraded ? (
+                              <div className="text-right">
+                                <span className="font-coolvetica font-bold text-base text-gsm-blue-main block leading-tight">
+                                  {student.finalScore} <span className="text-[10px] text-slate-400 font-normal">/100</span>
+                                </span>
+                                <span className="inline-block bg-blue-50 text-gsm-blue-main border border-blue-200 text-[9px] font-bold font-sans-code px-2 py-0.5 rounded-full">
+                                  {student.predicate || 'Siap Oprec'}
+                                </span>
+                              </div>
+                            ) : hasScore ? (
+                              <div className="text-right">
+                                <span className="font-coolvetica font-bold text-sm text-amber-600 block leading-tight">
+                                  {student.finalScore || 0} <span className="text-[10px] text-slate-400 font-normal">/100</span>
+                                </span>
+                                <span className="inline-block bg-amber-50 text-amber-700 border border-amber-300 text-[9px] font-bold font-sans-code px-2 py-0.5 rounded-full">
+                                  Belum Ada Pesan
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[9px] font-bold font-sans-code px-2.5 py-0.5 rounded-full">
+                                Belum Dinilai
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Meta Tags: Kelompok & Mentor */}

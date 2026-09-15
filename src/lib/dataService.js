@@ -129,10 +129,12 @@ export async function fetchAllRealData() {
       };
     }
 
-    // Read local cache for student status if needed
+    // Read local cache for student status & emails if needed
     let localStatuses = {};
+    let localEmails = {};
     try {
       localStatuses = JSON.parse(localStorage.getItem('rapot_student_statuses') || '{}');
+      localEmails = JSON.parse(localStorage.getItem('rapot_student_emails') || '{}');
     } catch (e) {}
 
     // Format DB Students with new rubrik structure
@@ -149,12 +151,13 @@ export async function fetchAllRealData() {
 
       const finalScore = Number(ev.final_score || 0);
       const studentStatus = s.student_status || localStatuses[s.id] || localStatuses[s.nrp] || 'Active';
+      const studentEmail = s.email || localEmails[s.id] || localEmails[s.nrp] || '';
 
       return {
         id: s.id,
         nim: s.nrp,
         name: s.name,
-        email: s.email || '',
+        email: studentEmail,
         prodi: s.prodi,
         kelompok: groupName,
         mentor: mentorName,
@@ -181,6 +184,22 @@ export async function fetchAllRealData() {
       };
     });
 
+    // Ensure Super Admin Dummy Student is present in dataset for testing
+    const dummyStoredEmail = localEmails['30000000-0000-0000-0000-000000000999'] || localEmails['5026249999'] || SUPER_ADMIN_DUMMY_STUDENT.email;
+    const resolvedDummy = {
+      ...SUPER_ADMIN_DUMMY_STUDENT,
+      email: dummyStoredEmail
+    };
+    const hasDummy = formattedStudents.some(s => s.nim === '5026249999' || s.id === '30000000-0000-0000-0000-000000000999');
+    if (!hasDummy) {
+      formattedStudents.push(resolvedDummy);
+    } else {
+      const dIdx = formattedStudents.findIndex(s => s.nim === '5026249999' || s.id === '30000000-0000-0000-0000-000000000999');
+      if (dIdx !== -1 && (!formattedStudents[dIdx].email || formattedStudents[dIdx].email === 'dummy.rawatmaba@gmail.com') && dummyStoredEmail) {
+        formattedStudents[dIdx].email = dummyStoredEmail;
+      }
+    }
+
     // Fetch profiles for last_login_at timestamps
     const { data: dbProfiles } = await supabase
       .from('profiles')
@@ -204,6 +223,9 @@ export async function fetchAllRealData() {
       });
     }
 
+    // Fetch Email Schedules
+    const emailSchedules = await fetchEmailSchedules();
+
     // Extract Unique Groups
     const formattedClasses = buildClassesFromStudents(formattedStudents);
 
@@ -212,17 +234,19 @@ export async function fetchAllRealData() {
       classes: formattedClasses,
       notices: fetchedNotices,
       subjectsCriteria,
-      mentorLogins
+      mentorLogins,
+      emailSchedules
     };
 
   } catch (err) {
     console.error('Error fetching Supabase data:', err);
     return {
-      students: initialStudents,
+      students: [SUPER_ADMIN_DUMMY_STUDENT, ...initialStudents],
       classes: initialClasses,
       notices: initialNotices,
       subjectsCriteria,
-      mentorLogins: {}
+      mentorLogins: {},
+      emailSchedules: await fetchEmailSchedules()
     };
   }
 }
@@ -487,21 +511,39 @@ export async function saveStudentGradeToSupabase(student) {
 export async function updateStudentEmailInSupabase(studentId, newEmail) {
   try {
     const cleanEmail = (newEmail || '').trim();
-    const { data, error } = await supabase
-      .from('students')
-      .update({ email: cleanEmail })
-      .eq('id', studentId);
+
+    // 1. Immediately persist to localStorage for instant local reactivity
+    try {
+      const localEmails = JSON.parse(localStorage.getItem('rapot_student_emails') || '{}');
+      localEmails[studentId] = cleanEmail;
+      localStorage.setItem('rapot_student_emails', JSON.stringify(localEmails));
+    } catch (e) {}
+
+    // Update in-memory dummy constant if targeting the dummy student
+    if (studentId === '30000000-0000-0000-0000-000000000999' || studentId === '5026249999') {
+      SUPER_ADMIN_DUMMY_STUDENT.email = cleanEmail;
+    }
+
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(studentId);
+    let query = supabase.from('students').update({ email: cleanEmail });
+    if (isUuid) {
+      query = query.eq('id', studentId);
+    } else {
+      query = query.eq('nrp', String(studentId).trim());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
-      console.error('Error updating student email in Supabase:', error);
-      return { success: false, error };
+      console.warn('Supabase student email update note (saved locally):', error.message || error);
+      return { success: true, localOnly: true, data };
     }
 
     console.log('Successfully updated student email in Supabase DB for ID:', studentId);
     return { success: true, data };
   } catch (err) {
     console.error('Exception updating student email in Supabase:', err);
-    return { success: false, error: err };
+    return { success: true, localOnly: true };
   }
 }
 
@@ -611,5 +653,224 @@ export async function updateStudentStatusInSupabase(studentId, newStatus) {
     return { success: true, localOnly: true };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPER ADMIN DUMMY STUDENT (Exclusively visible to Super Admin)
+// ═══════════════════════════════════════════════════════════════════════════
+export const SUPER_ADMIN_DUMMY_STUDENT = {
+  id: '30000000-0000-0000-0000-000000000999',
+  nim: '5026249999',
+  name: 'Dummy Mahasiswa (Admin Only)',
+  email: 'dummy.rawatmaba@gmail.com',
+  prodi: 'Sistem Informasi',
+  kelompok: 'Kelompok Khusus Admin',
+  mentor: 'Super Admin',
+  studentStatus: 'Active',
+  student_status: 'Active',
+  status: 'Sudah Dinilai',
+  finalScore: 90.4,
+  predicate: 'A',
+  scores: {
+    p1_struktur_cv: 4, p1_kelengkapan_info: 5, p1_relevansi_divisi: 4, p1_kualitas_penulisan: 4, p1_kesesuaian_jenis_cv: 5,
+    p2_kelengkapan_profil: 4, p2_personal_branding: 5, p2_konsistensi_cv: 4,
+    p3_struktur_jawaban_star: 5, p3_komunikasi_bahasa_tubuh: 4, p3_kepercayaan_diri: 5, p3_relevansi_jawaban: 4, p3_pertanyaan_sulit: 5,
+    p4_keaktifan_diskusi: 5, p4_kedisiplinan: 5, p4_kolaborasi_kelompok: 4, p4_keterbukaan_feedback: 5,
+  },
+  pillarScores: {
+    p1_score: 88.0,
+    p2_score: 86.6,
+    p3_score: 92.0,
+    p4_score: 95.0
+  },
+  notes: 'Peserta dummy untuk pengujian rapot, fitur email, dan unduh PDF oleh Super Admin.',
+  feedback_apresiasi: 'Menunjukkan pemahaman materi yang sangat baik dan aktif dalam seluruh sesi simulasi.',
+  feedback_saran: 'Pertahankan konsistensi penulisan CV dan perluas portofolio proyek terapan.',
+  feedback_oprec: 'Sangat direkomendasikan untuk mendaftar di Divisi Manajemen Acara & Public Relations.',
+  feedbackApresiasi: 'Menunjukkan pemahaman materi yang sangat baik dan aktif dalam seluruh sesi simulasi.',
+  feedbackSaran: 'Pertahankan konsistensi penulisan CV dan perluas portofolio proyek terapan.',
+  feedbackOprec: 'Sangat direkomendasikan untuk mendaftar di Divisi Manajemen Acara & Public Relations.',
+  isDummy: true,
+  lastUpdated: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EMAIL DISPATCH SCHEDULE MANAGEMENT (Super Admin Configurable)
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+export const DEFAULT_EMAIL_SCHEDULES = {
+  isGlobalEnabled: true,
+  globalStartTime: '', // format: 'YYYY-MM-DDTHH:mm'
+  globalEndTime: '',
+  mentorOverrides: {
+    // [mentorUsernameOrName]: { mode: 'inherit' | 'always' | 'disabled' | 'custom', startTime: '', endTime: '' }
+  }
+};
+
+export async function fetchEmailSchedules() {
+  try {
+    const { data, error } = await supabase
+      .from('email_schedules')
+      .select('*')
+      .eq('id', 'global_config')
+      .maybeSingle();
+
+    if (!error && data) {
+      return {
+        isGlobalEnabled: data.is_global_enabled ?? true,
+        globalStartTime: data.global_start_time || '',
+        globalEndTime: data.global_end_time || '',
+        mentorOverrides: data.mentor_overrides || {}
+      };
+    }
+    if (error) {
+      console.warn('Supabase fetch email_schedules error:', error.message || error);
+    }
+  } catch (err) {
+    console.error('Could not fetch email_schedules from Supabase DB:', err);
+  }
+
+  return DEFAULT_EMAIL_SCHEDULES;
+}
+
+export async function saveEmailSchedulesInSupabase(schedules) {
+  try {
+    const payload = {
+      id: 'global_config',
+      is_global_enabled: schedules.isGlobalEnabled ?? true,
+      global_start_time: schedules.globalStartTime ? new Date(schedules.globalStartTime).toISOString() : null,
+      global_end_time: schedules.globalEndTime ? new Date(schedules.globalEndTime).toISOString() : null,
+      mentor_overrides: schedules.mentorOverrides || {},
+      updated_at: new Date().toISOString(),
+      updated_by: 'super_admin'
+    };
+
+    const { data, error } = await supabase
+      .from('email_schedules')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Supabase email_schedules save error:', error.message || error);
+      return { success: false, error };
+    }
+
+    console.log('Successfully saved email schedules directly to Supabase DB');
+    return { success: true, data };
+  } catch (err) {
+    console.error('Exception saving email schedules to Supabase DB:', err);
+    return { success: false, error: err };
+  }
+}
+
+export function evaluateEmailScheduleForUser(currentUser, schedules) {
+  // 1. Super Admin always has master bypass access
+  if (currentUser?.role === 'super_admin' || currentUser?.username === 'webdev') {
+    return {
+      isAllowed: true,
+      isSuperAdmin: true,
+      status: 'active',
+      reason: 'Akses Super Admin: Pengiriman email aktif tanpa batasan jadwal.'
+    };
+  }
+
+  if (!schedules) {
+    return { isAllowed: true, status: 'active', reason: '' };
+  }
+
+  const now = Date.now();
+  const mentorUsername = currentUser?.username || '';
+  const mentorName = (currentUser?.name || '').trim().toLowerCase();
+
+  // Find mentor override by username, exact name, or partial match
+  let override = null;
+  if (schedules.mentorOverrides) {
+    if (mentorUsername && schedules.mentorOverrides[mentorUsername]) {
+      override = schedules.mentorOverrides[mentorUsername];
+    } else if (currentUser?.name && schedules.mentorOverrides[currentUser.name]) {
+      override = schedules.mentorOverrides[currentUser.name];
+    } else {
+      const entry = Object.entries(schedules.mentorOverrides).find(([key]) => {
+        const k = key.trim().toLowerCase();
+        return k === mentorUsername.toLowerCase() || k === mentorName || mentorName.includes(k) || k.includes(mentorName);
+      });
+      if (entry) override = entry[1];
+    }
+  }
+
+  const mode = override?.mode || 'inherit';
+
+  // Specific Mentor Mode: Always Active
+  if (mode === 'always') {
+    return { isAllowed: true, status: 'active', reason: 'Jadwal email aktif khusus untuk mentor kelompok Anda.' };
+  }
+
+  // Specific Mentor Mode: Disabled
+  if (mode === 'disabled') {
+    return {
+      isAllowed: false,
+      status: 'disabled',
+      reason: 'Pengiriman email saat ini dinonaktifkan untuk kelompok Anda oleh Super Admin.'
+    };
+  }
+
+  // Specific Mentor Mode: Custom Schedule Window
+  if (mode === 'custom') {
+    const start = override?.startTime ? new Date(override.startTime).getTime() : null;
+    const end = override?.endTime ? new Date(override.endTime).getTime() : null;
+
+    if (start && now < start) {
+      const startStr = new Date(start).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+      return {
+        isAllowed: false,
+        status: 'scheduled',
+        reason: `Tombol email baru akan aktif pada ${startStr} WIB sesuai jadwal kelompok Anda.`
+      };
+    }
+
+    if (end && now > end) {
+      const endStr = new Date(end).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+      return {
+        isAllowed: false,
+        status: 'expired',
+        reason: `Waktu pengiriman email untuk kelompok Anda telah berakhir pada ${endStr} WIB.`
+      };
+    }
+
+    return { isAllowed: true, status: 'active', reason: 'Jadwal pengiriman email kelompok Anda saat ini sedang dibuka.' };
+  }
+
+  // Inherit Global Schedule Mode
+  if (!schedules.isGlobalEnabled) {
+    return {
+      isAllowed: false,
+      status: 'disabled',
+      reason: 'Fitur pengiriman email sedang dinonaktifkan secara global oleh Super Admin.'
+    };
+  }
+
+  const gStart = schedules.globalStartTime ? new Date(schedules.globalStartTime).getTime() : null;
+  const gEnd = schedules.globalEndTime ? new Date(schedules.globalEndTime).getTime() : null;
+
+  if (gStart && now < gStart) {
+    const startStr = new Date(gStart).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    return {
+      isAllowed: false,
+      status: 'scheduled',
+      reason: `Tombol email baru akan aktif pada ${startStr} WIB sesuai jadwal panitia.`
+    };
+  }
+
+  if (gEnd && now > gEnd) {
+    const endStr = new Date(gEnd).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    return {
+      isAllowed: false,
+      status: 'expired',
+      reason: `Waktu pengiriman email telah berakhir pada ${endStr} WIB.`
+    };
+  }
+
+  return { isAllowed: true, status: 'active', reason: 'Jadwal pengiriman email saat ini sedang dibuka.' };
+}
+
 
 

@@ -61,8 +61,8 @@ serve(async (req: Request) => {
         : numericScore >= 75
           ? 'Siap Oprec'
           : numericScore >= 60
-            ? 'Cukup Siap'
-            : 'Perlu Pendampingan';
+            ? 'Cukup Siap (Perlu Latihan Tambahan)'
+            : 'Perlu Pendampingan Khusus';
     const displayStatus = !hasEvaluation
       ? 'Belum Dinilai'
       : numericScore >= 75
@@ -160,20 +160,29 @@ serve(async (req: Request) => {
                   <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${kelompok}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Mentor</td>
-                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${mentor}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Nilai Akhir</td>
-                  <td style="padding: 12px 16px; font-size: 18px; font-weight: 700; color: #003cec;">${displayScoreHtml}</td>
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Mentor</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a;">${mentor}</td>
                 </tr>
               </table>
 
-              <!-- Status -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+              <!-- Evaluation Results Table -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #dfe5f2; border-radius: 8px; overflow: hidden;">
+                <tr style="background-color: #f8faff;">
+                  <td style="padding: 12px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; width: 140px;">Nilai Akhir</td>
+                  <td style="padding: 12px 16px; font-size: 18px; font-weight: 700; color: #003cec; border-bottom: 1px solid #e2e8f0;">
+                    ${displayScoreHtml}
+                  </td>
+                </tr>
                 <tr>
-                  <td style="padding: 12px 16px; background-color: #f4f6c0; border-left: 3px solid #003cec; font-size: 13px; color: #0f172a; font-weight: 600;">
-                    Status evaluasi: ${displayStatus}
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Status</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 700; color: ${displayStatus === 'Lulus' ? '#15803d' : displayStatus === 'Perlu Latihan' ? '#d97706' : '#64748b'}; border-bottom: 1px solid #e2e8f0;">
+                    ${displayStatus}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Predikat</td>
+                  <td style="padding: 10px 16px; font-size: 13px; font-weight: 600; color: #0f172a;">
+                    ${displayPredicate}
                   </td>
                 </tr>
               </table>

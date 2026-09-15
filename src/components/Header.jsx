@@ -8,6 +8,7 @@ export default function Header({
   onOpenInsert,
   onOpenPdf,
   onOpenEditProfile,
+  onOpenScheduleEmail,
   isSyncing = false,
   isRealtimeConnected = true,
   onRefreshData
@@ -156,6 +157,18 @@ export default function Header({
                   <span className="material-symbols-outlined text-base text-[#003CEC]">manage_accounts</span>
                   <span>Edit Profile</span>
                 </button>
+
+                {/* Schedule Email Button (Super Admin Only) */}
+                {(currentUser?.role === 'super_admin' || currentUser?.username === 'webdev') && onOpenScheduleEmail && (
+                  <button 
+                    onClick={() => { setShowProfileMenu(false); onOpenScheduleEmail(); }}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-[#003CEC] rounded-xl flex items-center gap-2 font-semibold mt-1 font-isi transition-colors group"
+                  >
+                    <span className="material-symbols-outlined text-base text-[#003CEC] group-hover:scale-110 transition-transform">schedule_send</span>
+                    <span className="flex-1">Schedule Email</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#003CEC]"></span>
+                  </button>
+                )}
 
                 {/* Logout Button */}
                 <button 

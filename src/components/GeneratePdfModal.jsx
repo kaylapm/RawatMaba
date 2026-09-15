@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { PILLARS, calcPillarScore, getPredicate } from './InsertGradesModal';
+import { evaluateEmailScheduleForUser } from '../lib/dataService';
 
 export default function GeneratePdfModal({ 
   isOpen, 
   onClose, 
   student, 
   students = [], 
+  allStudents = [],
+  currentUser,
+  emailSchedules,
   isFullScreen = true,
   onNavigateToInsert,
   showToast
@@ -16,6 +21,9 @@ export default function GeneratePdfModal({
   const [previewScale, setPreviewScale] = useState(0.65); // Default fit screen zoom
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailProgress, setEmailProgress] = useState(0);
+  const [emailProgressStage, setEmailProgressStage] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [emailStatus, setEmailStatus] = useState(null); // 'sent' | 'error' | null
   const [lastErrorMessage, setLastErrorMessage] = useState('');
 
@@ -92,13 +100,16 @@ export default function GeneratePdfModal({
         ? 'Perlu Latihan'
         : 'Perlu Pendampingan';
 
-  // Helper: Overall rank calculation across all students
-  const sortedStudents = [...(students || [])].sort((a, b) => (Number(b.finalScore) || 0) - (Number(a.finalScore) || 0));
-  const studentRankIndex = sortedStudents.findIndex(s => s.id === currentStudent.id);
+  // Helper: Overall rank calculation across all students in Maba 2026 (excluding dummy admin test record)
+  const rankingPool = (allStudents && allStudents.length > 0 ? allStudents : students || [])
+    .filter(s => !s.isDummy && s.nim !== '5026249999');
+
+  const sortedStudents = [...rankingPool].sort((a, b) => (Number(b.finalScore) || 0) - (Number(a.finalScore) || 0));
+  const studentRankIndex = sortedStudents.findIndex(s => s.id === currentStudent.id || s.nim === currentStudent.nim);
   const overallRank = studentRankIndex !== -1 ? studentRankIndex + 1 : 1;
 
-  // Helper: generate exact 6-page PDF by rendering each page canvas individually (100% exact 6 pages, Zero Cutoffs!)
-  const generateMultiPagePdf = async () => {
+  // Helper: generate exact 6-page PDF with progress feedback
+  const generateMultiPagePdf = async (onProgress) => {
     const { jsPDF } = await import('jspdf');
     const htmlToImage = await import('html-to-image');
 
@@ -108,7 +119,8 @@ export default function GeneratePdfModal({
 
     if (pageElements.length === 0) throw new Error('Halaman rapot tidak ditemukan');
 
-    // html2canvas must capture the final font metrics and decoded image pixels.
+    if (onProgress) onProgress(10, 'Memuat aset font & template rapot...');
+
     if (document.fonts?.ready) {
       await document.fonts.ready;
     }
@@ -135,10 +147,8 @@ export default function GeneratePdfModal({
       }
     }));
 
-    // Let React layout and web-font metrics settle before taking the snapshot.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    // Create a pristine, strict A4 Portrait jsPDF document
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -146,14 +156,27 @@ export default function GeneratePdfModal({
       compress: true
     });
 
+    const pageLabels = [
+      'Halaman 1/6 (Cover)',
+      'Halaman 2/6 (Pesan KAHIMA)',
+      'Halaman 3/6 (Pesan HRD & PIC)',
+      'Halaman 4/6 (Lembar Nilai)',
+      'Halaman 5/6 (Feedback Mentor)',
+      'Halaman 6/6 (Penutup & Rekap)'
+    ];
+
     for (let i = 0; i < pageElements.length; i++) {
       const pageEl = pageElements[i];
       if (i > 0) {
         pdf.addPage('a4', 'portrait');
       }
 
-      // Yield to the browser render loop between page snapshots to keep CSS spinning animation alive
-      await new Promise(resolve => setTimeout(resolve, 30));
+      const currentStagePercent = Math.round(15 + ((i + 1) / pageElements.length) * 62);
+      if (onProgress) {
+        onProgress(currentStagePercent, `Merender ${pageLabels[i] || `Halaman ${i + 1}`}...`);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 35));
 
       const canvas = await htmlToImage.toCanvas(pageEl, {
         pixelRatio: 2,
@@ -164,37 +187,53 @@ export default function GeneratePdfModal({
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      // Stamp exactly 210mm x 297mm full-bleed without any margins or clipping
       pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
     }
 
+    if (onProgress) onProgress(80, 'Menyusun dokumen PDF...');
     return pdf;
   };
 
   const handleDownloadPdf = async () => {
     setIsGenerating(true);
-    // Yield to let React re-render and paint the spinning spinner icon first
+    setDownloadProgress(10);
     await new Promise(resolve => setTimeout(resolve, 60));
 
     const filename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
     try {
-      const pdf = await generateMultiPagePdf();
+      const pdf = await generateMultiPagePdf((pct) => {
+        setDownloadProgress(pct);
+      });
+      setDownloadProgress(95);
       pdf.save(filename);
+      setDownloadProgress(100);
 
       setIsGenerating(false);
+      setDownloadProgress(0);
       if (showToast) {
         showToast(`Rapot PDF untuk ${currentStudent.name || 'mahasiswa'} berhasil diunduh!`);
       }
     } catch (err) {
       console.error('PDF Generation Error:', err);
       setIsGenerating(false);
+      setDownloadProgress(0);
       if (showToast) {
         showToast(`Gagal mengunduh PDF: ${err.message || 'Terjadi kesalahan'}`);
       }
     }
   };
 
+  // Evaluate whether current user is allowed to send email according to super admin schedule
+  const scheduleStatus = evaluateEmailScheduleForUser(currentUser, emailSchedules);
+
   const handleSendEmail = async () => {
+    if (!scheduleStatus.isAllowed) {
+      if (showToast) {
+        showToast(scheduleStatus.reason || 'Pengiriman email saat ini sedang dikunci.');
+      }
+      return;
+    }
+
     if (!currentStudent.email || !currentStudent.email.trim()) {
       if (showToast) {
         showToast(`Email untuk ${currentStudent.name || 'mahasiswa'} belum diisi. Silakan masukkan di Data Mahasiswa.`);
@@ -203,19 +242,40 @@ export default function GeneratePdfModal({
     }
 
     setIsSendingEmail(true);
+    setEmailProgress(5);
+    setEmailProgressStage('Menyiapkan dokumen rapot...');
     setEmailStatus(null);
     setLastErrorMessage('');
 
     const recipientEmail = currentStudent.email.trim();
     const pdfFilename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
 
+    let progressInterval = null;
+
     try {
-      // Generate full crisp resolution PDF
-      const pdf = await generateMultiPagePdf();
+      // 1. Render all pages and track percentage (5% -> 80%)
+      const pdf = await generateMultiPagePdf((pct, stage) => {
+        setEmailProgress(pct);
+        setEmailProgressStage(stage);
+      });
+
+      setEmailProgress(82);
+      setEmailProgressStage('Mengonversi file ke format lampiran...');
       const pdfDataUrl = pdf.output('datauristring');
       const pdfBase64 = pdfDataUrl.split(',')[1];
 
-      // 2. Invoke Supabase Edge Function with a 25s timeout safeguard
+      setEmailProgress(85);
+      setEmailProgressStage(`Mengirim email ke ${recipientEmail}...`);
+
+      // Smooth percentage progression (85% -> 96%) while waiting for Edge Function
+      progressInterval = setInterval(() => {
+        setEmailProgress(prev => {
+          if (prev < 96) return prev + 1;
+          return prev;
+        });
+      }, 400);
+
+      // 2. Invoke Supabase Edge Function with a 60s timeout safeguard
       const invokePromise = supabase.functions.invoke('send-rapot-email', {
         body: {
           to_email: recipientEmail,
@@ -238,6 +298,7 @@ export default function GeneratePdfModal({
       );
 
       const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
+      if (progressInterval) clearInterval(progressInterval);
 
       if (error) {
         let errorDetail = error.message;
@@ -256,6 +317,9 @@ export default function GeneratePdfModal({
         throw new Error(data.error);
       }
 
+      setEmailProgress(100);
+      setEmailProgressStage('Email berhasil dikirim!');
+
       // Auto download backup
       pdf.save(pdfFilename);
 
@@ -263,8 +327,13 @@ export default function GeneratePdfModal({
       if (showToast) {
         showToast(`Rapot PDF berhasil dikirimkan ke ${recipientEmail}!`);
       }
-      setTimeout(() => setEmailStatus(null), 6000);
+      setTimeout(() => {
+        setEmailStatus(null);
+        setEmailProgress(0);
+        setEmailProgressStage('');
+      }, 6000);
     } catch (err) {
+      if (progressInterval) clearInterval(progressInterval);
       console.error('Email error:', err);
       const errMsg = err.message || 'Gagal mengirim email.';
       setLastErrorMessage(errMsg);
@@ -272,8 +341,13 @@ export default function GeneratePdfModal({
       if (showToast) {
         showToast(`Gagal kirim email: ${errMsg}`);
       }
-      setTimeout(() => setEmailStatus(null), 10000);
+      setTimeout(() => {
+        setEmailStatus(null);
+        setEmailProgress(0);
+        setEmailProgressStage('');
+      }, 10000);
     } finally {
+      if (progressInterval) clearInterval(progressInterval);
       setIsSendingEmail(false);
     }
   };
@@ -1192,36 +1266,99 @@ export default function GeneratePdfModal({
 
           <button
             onClick={handleDownloadPdf}
-            disabled={isGenerating}
-            className="bg-gsm-blue-main hover:bg-blue-700 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit disabled:opacity-80 disabled:cursor-wait"
+            disabled={isGenerating || isSendingEmail}
+            className="bg-gsm-blue-main hover:bg-blue-700 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 font-reddit disabled:opacity-80 disabled:cursor-wait relative overflow-hidden"
           >
-            <span className={`material-symbols-outlined text-base inline-block ${isGenerating ? 'animate-spin' : ''}`}>
-              {isGenerating ? 'progress_activity' : 'download'}
+            {isGenerating && (
+              <div 
+                className="absolute inset-0 bg-white/20 transition-all duration-300 ease-out pointer-events-none"
+                style={{ width: `${downloadProgress}%` }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              {isGenerating ? (
+                <span className="font-sans-code font-bold text-amber-200 min-w-[28px] text-right">
+                  {downloadProgress}%
+                </span>
+              ) : (
+                <span className="material-symbols-outlined text-base">download</span>
+              )}
+              <span>{isGenerating ? 'Mengunduh...' : 'Download PDF (6 Hlm)'}</span>
             </span>
-            <span>{isGenerating ? 'Mengunduh...' : 'Download PDF (6 Hlm)'}</span>
           </button>
 
           <button
             onClick={handleSendEmail}
-            disabled={isSendingEmail || isGenerating}
-            className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-reddit ${
-              emailStatus === 'sent'
+            disabled={isSendingEmail || isGenerating || !scheduleStatus.isAllowed}
+            title={!scheduleStatus.isAllowed ? scheduleStatus.reason : scheduleStatus.isSuperAdmin ? 'Akses Super Admin: Bebas Kirim' : 'Kirim Rapot PDF ke Email Mahasiswa'}
+            className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-reddit relative overflow-hidden ${
+              !scheduleStatus.isAllowed
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                : emailStatus === 'sent'
                 ? 'bg-emerald-600 text-white shadow-emerald-500/20'
                 : emailStatus === 'error'
                 ? 'bg-rose-600 text-white shadow-rose-500/20'
+                : isSendingEmail
+                ? 'bg-[#003CEC] text-white shadow-blue-600/30'
                 : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-white'
             }`}
           >
-            <span className={`material-symbols-outlined text-base inline-block ${isSendingEmail ? 'animate-spin' : ''}`}>
-              {isSendingEmail ? 'progress_activity' : emailStatus === 'sent' ? 'check_circle' : emailStatus === 'error' ? 'error' : 'mail'}
-            </span>
-            <span>
-              {isSendingEmail ? 'Mengirim...' : emailStatus === 'sent' ? 'Terkirim!' : 'Kirim Email'}
+            {isSendingEmail && (
+              <div 
+                className="absolute inset-0 bg-white/25 transition-all duration-300 ease-out pointer-events-none"
+                style={{ width: `${emailProgress}%` }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              {isSendingEmail ? (
+                <span className="font-sans-code font-bold text-amber-200 min-w-[30px] text-right">
+                  {emailProgress}%
+                </span>
+              ) : (
+                <span className="material-symbols-outlined text-base">
+                  {!scheduleStatus.isAllowed 
+                    ? 'lock_clock' 
+                    : emailStatus === 'sent' 
+                    ? 'check_circle' 
+                    : emailStatus === 'error' 
+                    ? 'error' 
+                    : 'mail'}
+                </span>
+              )}
+              <span>
+                {!scheduleStatus.isAllowed 
+                  ? 'Email Terkunci' 
+                  : isSendingEmail 
+                  ? 'Mengirim...' 
+                  : emailStatus === 'sent' 
+                  ? 'Terkirim!' 
+                  : 'Kirim Email'}
+              </span>
             </span>
           </button>
         </div>
 
       </div>
+
+
+
+      {/* Schedule lock notice banner for mentors when outside schedule window */}
+      {!scheduleStatus.isAllowed && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-base">schedule_send</span>
+            </div>
+            <div>
+              <p className="font-bold font-reddit text-amber-900">Jadwal Pengiriman Email Sedang Terkunci</p>
+              <p className="text-[11px] text-amber-800 font-isi mt-0.5">{scheduleStatus.reason}</p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-amber-200/60 text-amber-900 text-[10px] font-sans-code font-bold uppercase tracking-wider flex-shrink-0">
+            {scheduleStatus.status}
+          </span>
+        </div>
+      )}
 
       {/* Error notification if email failed */}
       {emailStatus === 'error' && (
@@ -1297,6 +1434,122 @@ export default function GeneratePdfModal({
             <div data-page="6" style={{ width: '794px', height: '1123px', overflow: 'hidden' }}>{renderClosingPage(true)}</div>
           </div>
         </div>
+      )}
+
+      {/* ═══ Glassmorphic Email Processing / Standby Notice Modal ═══ */}
+      {(isSendingEmail || emailStatus === 'sent') && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gsm-lilac overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            
+            {/* Header with GSM Gradient */}
+            <div className={`p-5 text-white relative overflow-hidden transition-colors duration-300 ${
+              emailStatus === 'sent' 
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500' 
+                : 'bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8]'
+            }`}>
+              <img 
+                src="/assets/Bintang.png" 
+                alt="GSM Star" 
+                className="absolute right-2 bottom-1 w-16 h-16 opacity-20 pointer-events-none select-none"
+              />
+              <div className="relative z-10 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-sm flex-shrink-0">
+                    <span className="material-symbols-outlined text-2xl">
+                      {emailStatus === 'sent' ? 'mark_email_read' : 'mail_lock'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="bg-white/20 backdrop-blur-md text-white font-sans-code font-bold text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-white/30">
+                      {emailStatus === 'sent' ? 'Status: Terkirim' : 'Proses Pengiriman Email'}
+                    </span>
+                    <h3 className="font-coolvetica font-bold text-lg text-white mt-1 leading-tight">
+                      {emailStatus === 'sent' ? 'Email Berhasil Dikirim!' : 'Mohon Tetap di Tab Ini'}
+                    </h3>
+                  </div>
+                </div>
+
+                {emailStatus === 'sent' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailStatus(null);
+                      setEmailProgress(0);
+                      setEmailProgressStage('');
+                    }}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all flex-shrink-0 border border-white/25"
+                    title="Tutup Popup"
+                  >
+                    <span className="material-symbols-outlined text-lg leading-none">close</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Body Notice & Progress */}
+            <div className="p-6 space-y-4 text-slate-700 bg-white">
+              {emailStatus === 'sent' ? (
+                <div className="text-center py-2 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
+                    <span className="material-symbols-outlined text-2xl">check_circle</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-base text-slate-900 font-coolvetica">
+                      Rapot PDF Berhasil Dikirimkan!
+                    </p>
+                    <p className="text-xs text-slate-500 font-isi">
+                      Dokumen rapot telah terkirim ke alamat email <strong>{currentStudent.email}</strong>.
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailStatus(null);
+                        setEmailProgress(0);
+                        setEmailProgressStage('');
+                      }}
+                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 font-reddit cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">check</span>
+                      <span>Tutup & Selesai</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-3">
+                    <span className="material-symbols-outlined text-amber-600 text-lg flex-shrink-0 mt-0.5">
+                      warning
+                    </span>
+                    <p className="text-xs text-amber-900 font-isi leading-relaxed">
+                      <strong>Jangan berpindah tab atau menutup browser</strong> hingga proses selesai (100%), agar seluruh 6 halaman rapot dapat dirender dan dikirim tanpa terhenti.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-isi font-medium truncate max-w-[280px]">
+                        {emailProgressStage || 'Sedang menyiapkan rapot...'}
+                      </span>
+                      <span className="font-sans-code font-bold text-[#003CEC] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full text-xs">
+                        {emailProgress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200/70 p-0.5">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#003CEC] via-[#0066FF] to-[#00B0D8] rounded-full transition-all duration-300 ease-out shadow-xs"
+                        style={{ width: `${emailProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>

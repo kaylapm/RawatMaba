@@ -9,6 +9,8 @@ import InsertGradesModal from './components/InsertGradesModal';
 import GeneratePdfModal from './components/GeneratePdfModal';
 import BatchUploadModal from './components/BatchUploadModal';
 import EditProfileModal from './components/EditProfileModal';
+import EmailScheduleModal from './components/EmailScheduleModal';
+import MentorScheduleNoticeModal from './components/MentorScheduleNoticeModal';
 import LoginPage from './components/LoginPage';
 import Footer from './components/Footer';
 import { initialStudents, initialClasses, notices as defaultNotices, subjectsCriteria } from './data/mockData';
@@ -21,7 +23,8 @@ import {
   updateStudentEmailInSupabase, 
   updateStudentStatusInSupabase, 
   createNoticeInSupabase, 
-  deleteNoticeInSupabase 
+  deleteNoticeInSupabase,
+  DEFAULT_EMAIL_SCHEDULES
 } from './lib/dataService';
 import { MENTOR_ACCOUNTS } from './components/LoginPage';
 
@@ -54,6 +57,7 @@ export default function App() {
   const [allStudents, setAllStudents] = useState(initialStudents);
   const [notices, setNotices] = useState(defaultNotices);
   const [mentorLogins, setMentorLogins] = useState({});
+  const [emailSchedules, setEmailSchedules] = useState(DEFAULT_EMAIL_SCHEDULES);
 
   // Realtime Sync Status
   const [isSyncing, setIsSyncing] = useState(false);
@@ -66,7 +70,63 @@ export default function App() {
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isMentorScheduleNoticeOpen, setIsMentorScheduleNoticeOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Auto-prompt mentor with schedule notice popup on session start
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'mentor') {
+      const seen = sessionStorage.getItem(`rapot_mentor_notice_seen_${currentUser.username}`);
+      if (!seen) {
+        setIsMentorScheduleNoticeOpen(true);
+      }
+    }
+  }, [currentUser?.username, currentUser?.role]);
+
+  // Active Session Watchdog: Enforce strict 1x24h auto-logout in realtime
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const verifySessionExpiry = () => {
+      try {
+        const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (!stored) {
+          setCurrentUser(null);
+          return;
+        }
+        const parsed = JSON.parse(stored);
+        if (!parsed?.expiresAt || Date.now() >= parsed.expiresAt) {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          setCurrentUser(null);
+          showToast('Sesi login Anda telah habis (1x24 jam). Silakan login kembali.');
+        }
+      } catch (e) {
+        console.warn('Session verification exception:', e);
+      }
+    };
+
+    // Verify immediately
+    verifySessionExpiry();
+
+    // Check periodically every 15 seconds
+    const interval = setInterval(verifySessionExpiry, 15000);
+
+    // Also verify when user returns to / focuses the tab
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        verifySessionExpiry();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', verifySessionExpiry);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', verifySessionExpiry);
+    };
+  }, [currentUser]);
 
   // Toast Notification state
   const [toast, setToast] = useState(null);
@@ -94,6 +154,9 @@ export default function App() {
       }
       if (realData && realData.mentorLogins) {
         setMentorLogins(realData.mentorLogins);
+      }
+      if (realData && realData.emailSchedules) {
+        setEmailSchedules(realData.emailSchedules);
       }
 
       if (manual) {
@@ -133,9 +196,20 @@ export default function App() {
                 role: dbProfile.role || prev?.role || (dbProfile.username === 'webdev' ? 'super_admin' : 'mentor'),
                 group_name: groupName
               };
+
+              // Preserve original login session expiration (strictly 24h from login)
+              let preservedExpiresAt = Date.now() + SESSION_DURATION_MS;
+              let preservedLoginAt = Date.now();
+              try {
+                const existing = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+                if (existing?.expiresAt) preservedExpiresAt = existing.expiresAt;
+                if (existing?.loginAt) preservedLoginAt = existing.loginAt;
+              } catch {}
+
               localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
                 user: updated,
-                expiresAt: Date.now() + SESSION_DURATION_MS
+                loginAt: preservedLoginAt,
+                expiresAt: preservedExpiresAt
               }));
               return updated;
             });
@@ -182,6 +256,14 @@ export default function App() {
           if (isMounted) refreshData(false);
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_schedules' },
+        (payload) => {
+          console.log('[Realtime] email_schedules updated:', payload.eventType);
+          if (isMounted) refreshData(false);
+        }
+      )
       .subscribe((status) => {
         if (!isMounted) return;
         if (status === 'SUBSCRIBED') {
@@ -220,6 +302,17 @@ export default function App() {
     if (!isMentor) return allStudents;
     
     return allStudents.filter(student => {
+      // Mentors must never see dummy students or Admin-only test records
+      if (
+        student.isDummy || 
+        student.mentor === 'Super Admin' || 
+        student.kelompok === 'Kelompok Khusus Admin' || 
+        student.nim === '5026249999' ||
+        student.id === '30000000-0000-0000-0000-000000000999'
+      ) {
+        return false;
+      }
+
       const sGroup = (student.kelompok || '').toLowerCase().trim();
       const sMentor = (student.mentor || '').toLowerCase().trim();
       const uGroup = mentorGroup.toLowerCase().trim();
@@ -378,6 +471,9 @@ export default function App() {
             console.warn('Could not persist session:', e);
           }
           setCurrentUser(user);
+          if (user?.role === 'mentor') {
+            setIsMentorScheduleNoticeOpen(true);
+          }
           showToast(`Selamat datang, ${user.name || user.username}!`);
         }} 
       />
@@ -419,6 +515,7 @@ export default function App() {
         onOpenInsert={() => handleOpenInsertForSpecificStudent(accessibleStudents[0])}
         onOpenPdf={() => handleSelectStudentForPdf(accessibleStudents[0])}
         onOpenEditProfile={() => setIsEditProfileOpen(true)}
+        onOpenScheduleEmail={() => setIsScheduleModalOpen(true)}
         isSyncing={isSyncing}
         isRealtimeConnected={isRealtimeConnected}
         onRefreshData={refreshData}
@@ -484,6 +581,9 @@ export default function App() {
               onClose={() => setActiveTab('students')}
               student={selectedStudent || accessibleStudents[0]}
               students={accessibleStudents}
+              allStudents={allStudents}
+              currentUser={currentUser}
+              emailSchedules={emailSchedules}
               showToast={showToast}
               onNavigateToInsert={(s) => {
                 setInsertTargetStudent(s);
@@ -521,6 +621,26 @@ export default function App() {
         currentUser={currentUser}
         onUpdateUser={(updatedUser) => setCurrentUser(updatedUser)}
         showToast={showToast}
+      />
+
+      <EmailScheduleModal 
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        emailSchedules={emailSchedules}
+        onSaveSchedules={(newSchedules) => setEmailSchedules(newSchedules)}
+        showToast={showToast}
+      />
+
+      <MentorScheduleNoticeModal 
+        isOpen={isMentorScheduleNoticeOpen}
+        currentUser={currentUser}
+        emailSchedules={emailSchedules}
+        onClose={() => {
+          if (currentUser?.username) {
+            sessionStorage.setItem(`rapot_mentor_notice_seen_${currentUser.username}`, 'true');
+          }
+          setIsMentorScheduleNoticeOpen(false);
+        }}
       />
 
       {/* Global Page Full-Width Footer anchored seamlessly to bottom */}

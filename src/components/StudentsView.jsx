@@ -279,9 +279,16 @@ export default function StudentsView({
                       {getInitials(student.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-serif-judul font-bold text-slate-900 text-sm truncate group-hover:text-gsm-blue-main transition-colors">
-                        {student.name}
-                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-serif-judul font-bold text-slate-900 text-sm truncate group-hover:text-gsm-blue-main transition-colors">
+                          {student.name}
+                        </h3>
+                        {(student.isDummy || student.nim === '5026249999') && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[9px] font-sans-code font-bold uppercase tracking-wider flex-shrink-0">
+                            Admin Dummy
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-slate-400 font-sans-code font-bold mt-0.5">
                         NRP: {student.nim}
                       </p>
@@ -371,7 +378,7 @@ export default function StudentsView({
                   <div className="flex justify-between items-center gap-2 pt-2 border-t border-slate-200/60">
                     <span className="text-[11px] text-slate-400 font-sans-code font-bold flex-shrink-0">Email:</span>
                     {editingEmailId === student.id ? (
-                      <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0">
+                      <div className="flex items-center gap-1 flex-1 justify-end min-w-0">
                         <input
                           type="email"
                           value={tempEmailValue}
@@ -382,26 +389,26 @@ export default function StudentsView({
                           }}
                           placeholder="nama@email.com"
                           autoFocus
-                          className="w-full max-w-[160px] bg-white border border-[#003CEC] rounded-lg px-2 py-0.5 text-[11px] font-sans-code text-slate-800 outline-none shadow-inner"
+                          className="w-full max-w-[150px] bg-white border border-[#003CEC] rounded-lg px-2 py-0.5 text-[11px] font-sans-code text-slate-800 outline-none shadow-xs h-6 leading-tight"
                         />
                         <button
                           type="button"
                           onClick={() => handleSaveEmail(student.id)}
                           disabled={savingEmailId === student.id}
-                          className="p-1 bg-[#003CEC] hover:bg-blue-700 text-white rounded-lg transition-all shadow-xs flex-shrink-0"
+                          className="w-6 h-6 bg-[#003CEC] hover:bg-blue-700 active:scale-95 text-white rounded-lg transition-all flex items-center justify-center shadow-xs flex-shrink-0"
                           title="Simpan Email"
                         >
-                          <span className="material-symbols-outlined text-[13px]">
+                          <span className="material-symbols-outlined text-xs leading-none">
                             {savingEmailId === student.id ? 'progress_activity' : 'check'}
                           </span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingEmailId(null)}
-                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all flex-shrink-0"
+                          className="w-6 h-6 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
                           title="Batal"
                         >
-                          <span className="material-symbols-outlined text-[13px]">close</span>
+                          <span className="material-symbols-outlined text-xs leading-none">close</span>
                         </button>
                       </div>
                     ) : (
