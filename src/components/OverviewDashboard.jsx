@@ -601,14 +601,14 @@ export default function OverviewDashboard({
       {/* ═══ 4. Main Analytics: Sumbu X 4 Pilar Bar Chart + Insight (Scroll Reveal) ═══ */}
       <div 
         ref={chartRef}
-        className={`grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-700 ease-out ${
+        className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch transition-all duration-700 ease-out ${
           isChartVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
         }`}
       >
         
-        {/* Left Column: Grade Distribution Chart per Pilar (7 Cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-4 sm:p-6 lg:p-7 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between hover:shadow-gsm-hover transition-all">
-          <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        {/* Left Column: Grade Distribution Chart per Pilar (7 Cols - Compact & Proportional Height) */}
+        <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between hover:shadow-gsm-hover transition-all lg:h-[400px]">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-2 sm:mb-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-gsm-blue-main text-2xl">bar_chart</span>
@@ -627,141 +627,152 @@ export default function OverviewDashboard({
             </div>
           </div>
 
-          {/* Bar Chart Sumbu X: 4 Pilar (Fully Responsive) */}
-          <div className="relative flex-1 min-h-[220px] sm:min-h-[240px] flex items-end justify-between px-1 sm:px-4 pb-10 pt-6 sm:pt-8 border-b border-slate-100 w-full overflow-hidden">
-            {/* Grid background dashed lines */}
-            <div className="absolute left-7 sm:left-10 right-0 top-0 h-full flex flex-col justify-between pb-10 pointer-events-none opacity-40">
-              <div className="w-full border-t border-dashed border-slate-300"></div>
-              <div className="w-full border-t border-dashed border-slate-300"></div>
-              <div className="w-full border-t border-dashed border-slate-300"></div>
-              <div className="w-full border-t border-dashed border-slate-300"></div>
+          {/* Bar Chart Sumbu X: 4 Pilar (Fully Responsive & Proportional Alignment) */}
+          <div className="relative flex-1 flex flex-col justify-between w-full py-1.5 border-b border-slate-100 min-h-0">
+            {/* Top Score Headers */}
+            <div className="grid grid-cols-4 pl-7 sm:pl-9 mb-1.5 gap-2 sm:gap-4 md:gap-6">
+              {pillarStats.map((pillar) => (
+                <div key={`header-${pillar.id}`} className="flex flex-col items-center text-center">
+                  <span className="text-[11px] sm:text-xs font-bold font-sans-code text-slate-900 leading-none">
+                    {pillar.sampleCount > 0 ? `${pillar.avgPct}%` : '0%'}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-medium font-sans-code text-slate-500 mt-0.5 whitespace-nowrap">
+                    {pillar.sampleCount > 0 ? `${pillar.avgScore} pt` : '0 pt'}
+                  </span>
+                </div>
+              ))}
             </div>
 
-            {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[9px] sm:text-[10px] text-slate-400 font-sans-code pb-10 pointer-events-none">
-              <span>100%</span>
-              <span>75%</span>
-              <span>50%</span>
-              <span>0%</span>
-            </div>
+            {/* Central Chart Plot Area (Exact Alignment between Y-Axis Grid & Bars) */}
+            <div className="relative h-[135px] sm:h-[155px] w-full flex items-end">
+              {/* Y-axis labels & dashed grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                {[100, 75, 50, 25, 0].map((level) => (
+                  <div key={level} className="w-full flex items-center gap-1.5 sm:gap-2">
+                    <span className="w-5 sm:w-7 text-right text-[9px] sm:text-[10px] text-slate-400 font-sans-code font-medium select-none -translate-y-[1px]">
+                      {level}%
+                    </span>
+                    <div className="flex-1 border-t border-dashed border-slate-200/90" />
+                  </div>
+                ))}
+              </div>
 
-            {/* 4 Pillars Bars (Sumbu X) */}
-            <div className="relative z-10 w-full flex items-end justify-around pl-7 sm:pl-10 gap-2 sm:gap-4 md:gap-6">
-              {pillarStats.map((pillar) => {
-                const heightPct = pillar.sampleCount > 0 ? Math.max(8, pillar.avgPct) : 10;
+              {/* 4 Pillars Bars (Sumbu X) */}
+              <div className="relative z-10 w-full h-full grid grid-cols-4 pl-7 sm:pl-9 gap-2 sm:gap-4 md:gap-6 items-end">
+                {pillarStats.map((pillar) => {
+                  const heightPct = pillar.sampleCount > 0 ? Math.min(100, Math.max(4, pillar.avgPct)) : 0;
 
-                return (
-                  <div key={pillar.id} className="flex-1 flex flex-col items-center group max-w-[58px] sm:max-w-[75px] md:max-w-[90px] min-w-0">
-                    <div className="flex flex-col items-center mb-1.5 group-hover:scale-105 transition-all text-center">
-                      <span className="text-[11px] sm:text-xs font-bold font-sans-code text-slate-900 leading-none">
-                        {pillar.sampleCount > 0 ? `${pillar.avgPct}%` : '0%'}
-                      </span>
-                      <span className="text-[9px] sm:text-[10px] font-medium font-sans-code text-slate-500 mt-0.5 whitespace-nowrap">
-                        {pillar.sampleCount > 0 ? `${pillar.avgScore} pt` : '0 pt'}
-                      </span>
-                    </div>
-
-                    <div 
-                      className="w-full bg-slate-100 rounded-t-xl sm:rounded-t-2xl h-[130px] sm:h-[160px] flex items-end p-0.5 sm:p-1 shadow-inner relative overflow-hidden border border-slate-200"
-                      title={`${pillar.title}: Rata-rata ${pillar.avgScore} dari ${pillar.bobot} Poin (Capaian ${pillar.avgPct}%)`}
-                    >
+                  return (
+                    <div key={pillar.id} className="h-full flex flex-col justify-end items-center group">
                       <div 
-                        className="w-full rounded-t-lg sm:rounded-t-xl transition-all duration-700 relative group-hover:brightness-110"
-                        style={{ 
-                          height: isChartVisible ? `${heightPct}%` : '0%', 
-                          backgroundColor: pillar.color,
-                          boxShadow: `0 4px 12px ${pillar.color}40`
-                        }}
+                        className="w-full max-w-[52px] sm:max-w-[68px] md:max-w-[80px] h-full bg-slate-100/75 rounded-t-xl sm:rounded-t-2xl flex items-end p-0.5 sm:p-1 shadow-inner relative overflow-hidden border border-slate-200/80 group-hover:border-slate-300 transition-colors"
+                        title={`${pillar.title}: Rata-rata ${pillar.avgScore} dari ${pillar.bobot} Poin (Capaian ${pillar.avgPct}%)`}
                       >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div 
+                          className="w-full rounded-t-lg sm:rounded-t-xl transition-all duration-700 relative group-hover:brightness-110"
+                          style={{ 
+                            height: isChartVisible ? `${heightPct}%` : '0%', 
+                            backgroundColor: pillar.color,
+                            boxShadow: `0 4px 12px ${pillar.color}40`
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    <span className="text-[9px] sm:text-[11px] text-slate-800 font-sans-code font-bold mt-2 text-center truncate w-full block">
-                      {pillar.code}
-                    </span>
-                    <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code truncate w-full text-center block">
-                      {pillar.shortTitle}
-                    </span>
-                    <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code font-medium">
-                      Maks: {pillar.bobot}pt
-                    </span>
-                  </div>
-                );
-              })}
+            {/* X-Axis Pillar Footer Labels */}
+            <div className="grid grid-cols-4 pl-7 sm:pl-9 mt-2 gap-2 sm:gap-4 md:gap-6">
+              {pillarStats.map((pillar) => (
+                <div key={`label-${pillar.id}`} className="flex flex-col items-center text-center min-w-0">
+                  <span className="text-[9px] sm:text-[11px] text-slate-800 font-sans-code font-bold truncate w-full">
+                    {pillar.code}
+                  </span>
+                  <span className="text-[8px] sm:text-[9px] text-slate-500 font-sans-code truncate w-full">
+                    {pillar.shortTitle}
+                  </span>
+                  <span className="text-[8px] sm:text-[9px] text-slate-400 font-sans-code font-medium">
+                    Maks: {pillar.bobot}pt
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Sub-Footer */}
-          <div className="pt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] sm:text-xs font-sans-code text-slate-500">
+          <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] sm:text-xs font-sans-code text-slate-500">
             <span className="leading-snug">P1: CV (30pt) · P2: LinkedIn (20pt) · P3: Interview (35pt) · P4: Sikap (15pt)</span>
             <span className="text-gsm-blue-main font-bold whitespace-nowrap">Total: 100 Poin</span>
           </div>
         </div>
 
-        {/* Right Column: Insight Average, Min, Max per Pilar (5 Cols) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between space-y-4 hover:shadow-gsm-hover transition-all">
+        {/* Right Column: Insight Average, Min, Max per Pilar (5 Cols - Matching Exact Height with Scroll) */}
+        <div className="lg:col-span-5 bg-white rounded-3xl p-5 sm:p-6 shadow-gsm-card border border-gsm-lilac flex flex-col justify-between space-y-3 hover:shadow-gsm-hover transition-all lg:h-[400px]">
           <div className="flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-gsm-blue-main text-2xl">insights</span>
-                <h2 className="font-coolvetica font-bold text-lg text-slate-900 tracking-wide">
+                <h2 className="font-coolvetica font-bold text-base sm:text-lg text-slate-900 tracking-wide">
                   Insight Nilai per Pilar
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 font-sans-code tracking-wide mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-500 font-sans-code tracking-wide mt-0.5">
                 Rata-rata (Avg), Nilai Minimum & Maximum
               </p>
             </div>
-            <span className="text-[10px] font-sans-code font-bold bg-blue-50 text-gsm-blue-main px-3 py-1 rounded-full border border-blue-200">
+            <span className="text-[10px] font-sans-code font-bold bg-blue-50 text-gsm-blue-main px-2.5 py-1 rounded-full border border-blue-200">
               4 Pilar Analisis
             </span>
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
             {pillarStats.map((pillar) => (
               <div 
                 key={pillar.id}
-                className="p-3.5 rounded-2xl border border-gsm-lilac hover:border-slate-300 transition-all bg-slate-50/50 flex flex-col justify-between gap-2 shadow-sm"
+                className="p-3 rounded-2xl border border-gsm-lilac hover:border-slate-300 transition-all bg-slate-50/50 flex flex-col justify-between gap-1.5 shadow-xs"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     <span 
-                      className="w-7 h-7 rounded-xl text-white font-sans-code font-bold text-xs flex items-center justify-center shadow-sm"
+                      className="w-6 h-6 rounded-lg text-white font-sans-code font-bold text-[11px] flex items-center justify-center shadow-xs"
                       style={{ backgroundColor: pillar.color }}
                     >
                       {pillar.code}
                     </span>
                     <div>
-                      <h4 className="font-coolvetica font-bold text-slate-900 text-xs sm:text-sm">
+                      <h4 className="font-coolvetica font-bold text-slate-900 text-xs sm:text-sm leading-tight">
                         {pillar.title}
                       </h4>
-                      <span className="text-[10px] text-slate-400 font-sans-code">
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 font-sans-code">
                         Bobot Maks: {pillar.bobot} Poin
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] font-sans-code text-slate-400 block uppercase font-bold">Rata-Rata</span>
-                    <span className="font-coolvetica font-bold text-base text-slate-900">
-                      {pillar.avgScore} <span className="text-xs font-sans text-slate-500 font-normal">/ {pillar.bobot} pt</span>
+                    <span className="text-[9px] font-sans-code text-slate-400 block uppercase font-bold leading-none">Rata-Rata</span>
+                    <span className="font-coolvetica font-bold text-sm sm:text-base text-slate-900 leading-snug">
+                      {pillar.avgScore} <span className="text-[10px] font-sans text-slate-500 font-normal">/ {pillar.bobot} pt</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] font-sans-code">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#C86047] bg-[#E59B86]/20 border border-[#E59B86]/40 px-2 py-0.5 rounded-md font-bold text-[10px]">
+                <div className="pt-1.5 border-t border-slate-200/70 flex items-center justify-between text-[10px] sm:text-[11px] font-sans-code">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#C86047] bg-[#E59B86]/20 border border-[#E59B86]/40 px-1.5 py-0.5 rounded-md font-bold text-[9px]">
                       Min: {pillar.minScore} pt
                     </span>
-                    <span className="text-[#0082A0] bg-[#00B0D8]/15 border border-[#00B0D8]/40 px-2 py-0.5 rounded-md font-bold text-[10px]">
+                    <span className="text-[#0082A0] bg-[#00B0D8]/15 border border-[#00B0D8]/40 px-1.5 py-0.5 rounded-md font-bold text-[9px]">
                       Max: {pillar.maxScore} pt
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                    <span className="text-[10px] text-slate-400">Capaian:</span>
+                  <div className="flex items-center gap-1 font-bold text-slate-700">
+                    <span className="text-[9px] text-slate-400 font-normal">Capaian:</span>
                     <span>{pillar.avgPct}%</span>
                   </div>
                 </div>
@@ -769,8 +780,8 @@ export default function OverviewDashboard({
             ))}
           </div>
 
-          <div className="pt-2 border-t border-slate-100 text-[11px] font-sans-code text-slate-500 flex items-center justify-between">
-            <span>Sampel Terhitung: {gradedStudents.length} Mahasiswa</span>
+          <div className="pt-2 border-t border-slate-100 text-[10px] sm:text-[11px] font-sans-code text-slate-500 flex items-center justify-between">
+            <span>Sampel: {gradedStudents.length} Mahasiswa</span>
             <button 
               onClick={onOpenInsert}
               className="text-gsm-blue-main font-bold hover:underline"
