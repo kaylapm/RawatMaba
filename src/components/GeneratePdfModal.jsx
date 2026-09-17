@@ -4,6 +4,23 @@ import { supabase } from '../lib/supabase';
 import { PILLARS, calcPillarScore, getPredicate } from './InsertGradesModal';
 import { evaluateEmailScheduleForUser } from '../lib/dataService';
 
+// Format ISO string to readable timestamp "17 Sep, 20:19 WIB"
+function formatSentTime(isoString) {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace('.', ':') + ' WIB';
+  } catch {
+    return '';
+  }
+}
+
 export default function GeneratePdfModal({ 
   isOpen, 
   onClose, 
@@ -14,9 +31,11 @@ export default function GeneratePdfModal({
   emailSchedules,
   isFullScreen = true,
   onNavigateToInsert,
+  onSelectStudent,
   showToast
 }) {
   const [selectedStudentId, setSelectedStudentId] = useState(student?.id || students?.[0]?.id);
+  const prevStudentPropIdRef = useRef(student?.id);
   const [currentPageIndex, setCurrentPageIndex] = useState(1); // 1..6
   const [previewScale, setPreviewScale] = useState(0.65); // Default fit screen zoom
   const [isGenerating, setIsGenerating] = useState(false);
@@ -27,16 +46,39 @@ export default function GeneratePdfModal({
   const [emailStatus, setEmailStatus] = useState(null); // 'sent' | 'error' | null
   const [lastErrorMessage, setLastErrorMessage] = useState('');
 
+  // Persistent sent email history to prevent accidental duplicates
+  const [sentHistory, setSentHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem('rapot_sent_emails_history_v1');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [confirmResendStudent, setConfirmResendStudent] = useState(null);
+
   // Hidden print container ref for html2pdf
   const pdfExportContainerRef = useRef(null);
 
+  // Sync selectedStudentId ONLY when student prop's ID has actually changed from outside
   useEffect(() => {
-    if (student?.id) {
+    if (student?.id && student.id !== prevStudentPropIdRef.current) {
+      prevStudentPropIdRef.current = student.id;
       setSelectedStudentId(student.id);
-    } else if (students?.[0]?.id && !selectedStudentId) {
+    } else if (!selectedStudentId && students?.[0]?.id) {
+      prevStudentPropIdRef.current = students[0].id;
       setSelectedStudentId(students[0].id);
     }
-  }, [student, isOpen, students]);
+  }, [student?.id, students, selectedStudentId]);
+
+  const handleSelectStudentChange = (newId) => {
+    setSelectedStudentId(newId);
+    prevStudentPropIdRef.current = newId;
+    const found = students.find(s => s.id === newId);
+    if (found && onSelectStudent) {
+      onSelectStudent(found);
+    }
+  };
 
   if (isOpen === false && !isFullScreen) return null;
 
@@ -195,11 +237,14 @@ export default function GeneratePdfModal({
   };
 
   const handleDownloadPdf = async () => {
+    const targetStudent = students?.find(s => s.id === selectedStudentId) || currentStudent;
+    if (!targetStudent || !targetStudent.id) return;
+
     setIsGenerating(true);
     setDownloadProgress(10);
     await new Promise(resolve => setTimeout(resolve, 60));
 
-    const filename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
+    const filename = `Rapot_Rawat_Maba_${targetStudent.nim}_${(targetStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
     try {
       const pdf = await generateMultiPagePdf((pct) => {
         setDownloadProgress(pct);
@@ -211,7 +256,7 @@ export default function GeneratePdfModal({
       setIsGenerating(false);
       setDownloadProgress(0);
       if (showToast) {
-        showToast(`Rapot PDF untuk ${currentStudent.name || 'mahasiswa'} berhasil diunduh!`);
+        showToast(`Rapot PDF untuk ${targetStudent.name || 'mahasiswa'} berhasil diunduh!`);
       }
     } catch (err) {
       console.error('PDF Generation Error:', err);
@@ -226,7 +271,9 @@ export default function GeneratePdfModal({
   // Evaluate whether current user is allowed to send email according to super admin schedule
   const scheduleStatus = evaluateEmailScheduleForUser(currentUser, emailSchedules);
 
-  const handleSendEmail = async () => {
+  const handleSendEmailClick = () => {
+    if (isSendingEmail || isGenerating) return;
+
     if (!scheduleStatus.isAllowed) {
       if (showToast) {
         showToast(scheduleStatus.reason || 'Pengiriman email saat ini sedang dikunci.');
@@ -234,21 +281,55 @@ export default function GeneratePdfModal({
       return;
     }
 
-    if (!currentStudent.email || !currentStudent.email.trim()) {
+    const targetStudent = students?.find(s => s.id === selectedStudentId) || currentStudent;
+    if (!targetStudent || !targetStudent.id) {
+      if (showToast) showToast('Data mahasiswa tidak ditemukan.');
+      return;
+    }
+
+    if (!targetStudent.email || !targetStudent.email.trim()) {
       if (showToast) {
-        showToast(`Email untuk ${currentStudent.name || 'mahasiswa'} belum diisi. Silakan masukkan di Data Mahasiswa.`);
+        showToast(`Email untuk ${targetStudent.name || 'mahasiswa'} belum diisi. Silakan masukkan di Data Mahasiswa.`);
       }
       return;
     }
 
+    // Check if this student already received an email before (Warn & Prevent Duplicate Send)
+    const existingHistory = sentHistory[targetStudent.id];
+    if (existingHistory) {
+      setConfirmResendStudent(targetStudent);
+    } else {
+      executeSendEmail(targetStudent);
+    }
+  };
+
+  const executeSendEmail = async (targetStudent) => {
+    if (isSendingEmail) return;
+
+    const recipientEmail = targetStudent.email.trim();
+    const studentName = targetStudent.name || 'Mahasiswa';
+    const studentNim = targetStudent.nim || '-';
+    const studentProdi = targetStudent.prodi || '-';
+    const studentKelompok = targetStudent.kelompok || '-';
+    const pdfFilename = `Rapot_Rawat_Maba_${studentNim}_${studentName.replace(/\s+/g, '_')}.pdf`;
+
+    const targetNumericScore = Number(targetStudent.finalScore);
+    const targetHasEvaluation = Number.isFinite(targetNumericScore) && targetNumericScore > 0 && targetNumericScore <= 100;
+    const targetPredicateInfo = getPredicate(targetStudent.finalScore);
+    const targetEmailPredicate = targetHasEvaluation ? targetPredicateInfo.grade : '-';
+    const targetStatusForEmail = !targetHasEvaluation
+      ? 'Belum Dinilai'
+      : targetNumericScore >= 75
+        ? 'Lulus'
+        : targetNumericScore >= 60
+          ? 'Perlu Latihan'
+          : 'Perlu Pendampingan';
+
     setIsSendingEmail(true);
     setEmailProgress(5);
-    setEmailProgressStage('Menyiapkan dokumen rapot...');
+    setEmailProgressStage(`Menyiapkan dokumen rapot untuk ${studentName}...`);
     setEmailStatus(null);
     setLastErrorMessage('');
-
-    const recipientEmail = currentStudent.email.trim();
-    const pdfFilename = `Rapot_Rawat_Maba_${currentStudent.nim}_${(currentStudent.name || 'Mahasiswa').replace(/\s+/g, '_')}.pdf`;
 
     let progressInterval = null;
 
@@ -279,14 +360,14 @@ export default function GeneratePdfModal({
       const invokePromise = supabase.functions.invoke('send-rapot-email', {
         body: {
           to_email: recipientEmail,
-          to_name: currentStudent.name,
-          student_nim: currentStudent.nim,
-          student_prodi: currentStudent.prodi,
-          kelompok: currentStudent.kelompok,
+          to_name: studentName,
+          student_nim: studentNim,
+          student_prodi: studentProdi,
+          kelompok: studentKelompok,
           mentor: mentorTwoWords,
-          nilai_akhir: hasEvaluation ? numericFinalScore : 0,
-          predikat: emailPredicate,
-          status: evaluationStatusForEmail,
+          nilai_akhir: targetHasEvaluation ? targetNumericScore : 0,
+          predikat: targetEmailPredicate,
+          status: targetStatusForEmail,
           logo_url: new URL('/assets/Logo%20HRD.png', window.location.origin).href,
           pdf_base64: pdfBase64,
           pdf_filename: pdfFilename,
@@ -318,20 +399,31 @@ export default function GeneratePdfModal({
       }
 
       setEmailProgress(100);
-      setEmailProgressStage('Email berhasil dikirim!');
+      setEmailProgressStage(`Email untuk ${studentName} berhasil dikirim!`);
 
       // Auto download backup
       pdf.save(pdfFilename);
 
+      // Update sent history in state & localStorage
+      const newHistory = {
+        ...sentHistory,
+        [targetStudent.id]: {
+          sentAt: new Date().toISOString(),
+          count: (sentHistory[targetStudent.id]?.count || 0) + 1,
+          recipient: recipientEmail,
+          studentName: studentName
+        }
+      };
+      setSentHistory(newHistory);
+      try {
+        localStorage.setItem('rapot_sent_emails_history_v1', JSON.stringify(newHistory));
+      } catch (e) {}
+
       setEmailStatus('sent');
       if (showToast) {
-        showToast(`Rapot PDF berhasil dikirimkan ke ${recipientEmail}!`);
+        showToast(`Rapot PDF untuk ${studentName} (${recipientEmail}) berhasil dikirimkan!`);
       }
-      setTimeout(() => {
-        setEmailStatus(null);
-        setEmailProgress(0);
-        setEmailProgressStage('');
-      }, 6000);
+      // Stay on screen indefinitely until the mentor explicitly clicks close / OK
     } catch (err) {
       if (progressInterval) clearInterval(progressInterval);
       console.error('Email error:', err);
@@ -339,7 +431,7 @@ export default function GeneratePdfModal({
       setLastErrorMessage(errMsg);
       setEmailStatus('error');
       if (showToast) {
-        showToast(`Gagal kirim email: ${errMsg}`);
+        showToast(`Gagal kirim email ke ${recipientEmail}: ${errMsg}`);
       }
       setTimeout(() => {
         setEmailStatus(null);
@@ -1119,7 +1211,7 @@ export default function GeneratePdfModal({
             </span>
             <select
               value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
+              onChange={(e) => handleSelectStudentChange(e.target.value)}
               className="w-full max-w-lg bg-white/95 text-slate-900 border border-white/40 rounded-xl px-4 py-2 text-xs font-bold font-isi outline-none focus:ring-2 focus:ring-gsm-cream shadow-sm cursor-pointer"
             >
               {students.map(s => (
@@ -1287,60 +1379,71 @@ export default function GeneratePdfModal({
             </span>
           </button>
 
-          <button
-            onClick={handleSendEmail}
-            disabled={isSendingEmail || isGenerating || !scheduleStatus.isAllowed}
-            title={!scheduleStatus.isAllowed ? scheduleStatus.reason : scheduleStatus.isSuperAdmin ? 'Akses Super Admin: Bebas Kirim' : 'Kirim Rapot PDF ke Email Mahasiswa'}
-            className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-reddit relative overflow-hidden ${
-              !scheduleStatus.isAllowed
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
-                : emailStatus === 'sent'
-                ? 'bg-emerald-600 text-white shadow-emerald-500/20'
-                : emailStatus === 'error'
-                ? 'bg-rose-600 text-white shadow-rose-500/20'
-                : isSendingEmail
-                ? 'bg-[#003CEC] text-white shadow-blue-600/30'
-                : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-white'
-            }`}
-          >
-            {isSendingEmail && (
-              <div 
-                className="absolute inset-0 bg-white/25 transition-all duration-300 ease-out pointer-events-none"
-                style={{ width: `${emailProgress}%` }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1.5">
-              {isSendingEmail ? (
-                <span className="font-sans-code font-bold text-amber-200 min-w-[30px] text-right">
-                  {emailProgress}%
+          {/* Kirim Email Button with Sent History Indicator */}
+          {(() => {
+            const isAlreadySent = Boolean(sentHistory[currentStudent.id]);
+            const sentRecord = sentHistory[currentStudent.id];
+
+            return (
+              <button
+                type="button"
+                onClick={handleSendEmailClick}
+                disabled={isSendingEmail || isGenerating || !scheduleStatus.isAllowed}
+                title={
+                  !scheduleStatus.isAllowed 
+                    ? scheduleStatus.reason 
+                    : isAlreadySent 
+                    ? `Sudah dikirim ${sentRecord?.count || 1}x pada ${formatSentTime(sentRecord?.sentAt)}. Klik untuk konfirmasi kirim ulang.` 
+                    : scheduleStatus.isSuperAdmin 
+                    ? 'Akses Super Admin: Bebas Kirim' 
+                    : 'Kirim Rapot PDF ke Email Mahasiswa'
+                }
+                className={`font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-reddit relative overflow-hidden ${
+                  !scheduleStatus.isAllowed
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                    : isSendingEmail
+                    ? 'bg-[#003CEC] text-white shadow-blue-600/30'
+                    : isAlreadySent
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/25'
+                    : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-white'
+                }`}
+              >
+                {isSendingEmail && (
+                  <div 
+                    className="absolute inset-0 bg-white/25 transition-all duration-300 ease-out pointer-events-none"
+                    style={{ width: `${emailProgress}%` }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {isSendingEmail ? (
+                    <span className="font-sans-code font-bold text-amber-200 min-w-[30px] text-right">
+                      {emailProgress}%
+                    </span>
+                  ) : (
+                    <span className="material-symbols-outlined text-base">
+                      {!scheduleStatus.isAllowed 
+                        ? 'lock_clock' 
+                        : isAlreadySent 
+                        ? 'mark_email_read' 
+                        : 'mail'}
+                    </span>
+                  )}
+                  <span>
+                    {!scheduleStatus.isAllowed 
+                      ? 'Email Terkunci' 
+                      : isSendingEmail 
+                      ? 'Mengirim...' 
+                      : isAlreadySent 
+                      ? `Sudah Terkirim (${sentRecord?.count || 1}x)` 
+                      : 'Kirim Email'}
+                  </span>
                 </span>
-              ) : (
-                <span className="material-symbols-outlined text-base">
-                  {!scheduleStatus.isAllowed 
-                    ? 'lock_clock' 
-                    : emailStatus === 'sent' 
-                    ? 'check_circle' 
-                    : emailStatus === 'error' 
-                    ? 'error' 
-                    : 'mail'}
-                </span>
-              )}
-              <span>
-                {!scheduleStatus.isAllowed 
-                  ? 'Email Terkunci' 
-                  : isSendingEmail 
-                  ? 'Mengirim...' 
-                  : emailStatus === 'sent' 
-                  ? 'Terkirim!' 
-                  : 'Kirim Email'}
-              </span>
-            </span>
-          </button>
+              </button>
+            );
+          })()}
         </div>
 
       </div>
-
-
 
       {/* Schedule lock notice banner for mentors when outside schedule window */}
       {!scheduleStatus.isAllowed && (
@@ -1501,6 +1604,15 @@ export default function GeneratePdfModal({
                       Dokumen rapot telah terkirim ke alamat email <strong>{currentStudent.email}</strong>.
                     </p>
                   </div>
+
+                  {/* Mentor coordination reminder note */}
+                  <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-3 text-left flex items-start gap-2.5 text-xs text-slate-700">
+                    <span className="material-symbols-outlined text-gsm-blue-main text-base flex-shrink-0 mt-0.5">info</span>
+                    <p className="text-[11px] leading-relaxed">
+                      <strong>Info Mentor:</strong> Jika peserta mengabarkan belum menerima email atau Anda ragu statusnya, <strong>silakan chat di grup mentor WhatsApp</strong> agar tim HRD yang mengecek log sistem pengiriman.
+                    </p>
+                  </div>
+
                   <div className="pt-2">
                     <button
                       type="button"
@@ -1545,6 +1657,103 @@ export default function GeneratePdfModal({
                   </div>
                 </>
               )}
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ═══ Modal Konfirmasi Pengiriman Ulang Email (Anti Duplikat / Anti Kirim 2x) ═══ */}
+      {confirmResendStudent && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-isi animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            
+            {/* Header with Warning Accent */}
+            <div className="p-5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white relative overflow-hidden">
+              <div className="relative z-10 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-sm flex-shrink-0">
+                    <span className="material-symbols-outlined text-2xl">mark_email_read</span>
+                  </div>
+                  <div>
+                    <span className="bg-white/20 backdrop-blur-md text-white font-sans-code font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-white/30">
+                      Peringatan Pengiriman Ulang
+                    </span>
+                    <h3 className="font-coolvetica font-bold text-lg text-white mt-0.5">
+                      Rapot Sudah Pernah Dikirim!
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setConfirmResendStudent(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all border border-white/25"
+                  title="Tutup"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Body Explanation */}
+            <div className="p-6 space-y-4 text-slate-700 bg-white">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
+                <p className="font-bold text-slate-900 font-coolvetica text-sm">
+                  {confirmResendStudent.name} ({confirmResendStudent.nim})
+                </p>
+                <p className="text-slate-600 font-sans-code">
+                  Tujuan: <strong className="text-gsm-blue-main">{confirmResendStudent.email}</strong>
+                </p>
+                {sentHistory[confirmResendStudent.id] && (
+                  <p className="text-[11px] text-emerald-700 font-sans-code font-bold flex items-center gap-1 mt-1">
+                    <span className="material-symbols-outlined text-xs">check_circle</span>
+                    <span>Telah dikirim {sentHistory[confirmResendStudent.id].count}x (Terakhir: {formatSentTime(sentHistory[confirmResendStudent.id].sentAt)})</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Warning Notice to Mentor */}
+              <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3">
+                <span className="material-symbols-outlined text-amber-600 text-xl flex-shrink-0 mt-0.5">forum</span>
+                <div className="space-y-1 text-xs text-amber-950 font-isi leading-relaxed">
+                  <p className="font-bold font-reddit text-amber-900">
+                    Harap Chat di Grup Mentor Terlebih Dahulu!
+                  </p>
+                  <p>
+                    Sebelum mengirim ulang, pastikan untuk <strong>bertanya di grup mentor WhatsApp</strong> apakah email rapot peserta sudah masuk atau belum.
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 font-medium text-center">
+                Apakah Anda yakin tetap ingin mengirimkan ulang rapot ke email mahasiswa ini?
+              </p>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmResendStudent(null)}
+                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 flex items-center justify-center font-reddit cursor-pointer text-center"
+                >
+                  Batal (Jangan Kirim)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const st = confirmResendStudent;
+                    setConfirmResendStudent(null);
+                    executeSendEmail(st);
+                  }}
+                  className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center font-reddit cursor-pointer text-center"
+                >
+                  Ya, Tetap Kirim Ulang
+                </button>
+              </div>
+
             </div>
 
           </div>

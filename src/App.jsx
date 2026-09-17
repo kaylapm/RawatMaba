@@ -585,6 +585,7 @@ export default function App() {
               currentUser={currentUser}
               emailSchedules={emailSchedules}
               showToast={showToast}
+              onSelectStudent={(s) => setSelectedStudent(s)}
               onNavigateToInsert={(s) => {
                 setInsertTargetStudent(s);
                 setActiveTab('insert');
